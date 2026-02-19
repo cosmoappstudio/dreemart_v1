@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, getApiUrl } from '../lib/supabase';
 import { Search, User, Ban, CheckCircle, Loader2, Filter } from 'lucide-react';
 
 interface ProfileRow {
@@ -19,7 +19,7 @@ interface ProfileRow {
 
 type RoleFilter = 'all' | 'user' | 'admin';
 type StatusFilter = 'all' | 'active' | 'banned';
-type TierFilter = 'all' | 'free' | 'pro';
+type PackFilter = 'all' | 'has_pack' | 'no_pack';
 type LanguageFilter = 'all' | 'tr' | 'en' | 'es' | 'de';
 type DateRangeKey = 'all' | '7' | '30' | '90';
 
@@ -35,10 +35,10 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'banned', label: 'Yasaklı' },
 ];
 
-const TIER_OPTIONS: { value: TierFilter; label: string }[] = [
+const PACK_OPTIONS: { value: PackFilter; label: string }[] = [
   { value: 'all', label: 'Tümü' },
-  { value: 'free', label: 'Free' },
-  { value: 'pro', label: 'Pro' },
+  { value: 'has_pack', label: 'Paket almış' },
+  { value: 'no_pack', label: 'Paket almamış' },
 ];
 
 const LANGUAGE_OPTIONS: { value: LanguageFilter; label: string }[] = [
@@ -73,10 +73,13 @@ export default function AdminUsers() {
   const [noBackend, setNoBackend] = useState(false);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [tierFilter, setTierFilter] = useState<TierFilter>('all');
+  const [packFilter, setPackFilter] = useState<PackFilter>('all');
   const [languageFilter, setLanguageFilter] = useState<LanguageFilter>('all');
   const [dateRange, setDateRange] = useState<DateRangeKey>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+  const [creditError, setCreditError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) {
@@ -91,7 +94,11 @@ export default function AdminUsers() {
       .order('created_at', { ascending: false })
       .limit(500)
       .then(({ data }) => {
-        setList((data || []) as ProfileRow[]);
+        const rows: ProfileRow[] = (data || []).map((row: Record<string, unknown>) => ({
+          ...row,
+          pricing_packs: Array.isArray(row.pricing_packs) ? (row.pricing_packs[0] as { name: string } | undefined) ?? null : (row.pricing_packs as { name: string } | null) ?? null,
+        })) as ProfileRow[];
+        setList(rows);
         setLoading(false);
       });
   }, []);
@@ -105,9 +112,12 @@ export default function AdminUsers() {
     if (roleFilter !== 'all' && p.role !== roleFilter) return false;
     if (statusFilter === 'active' && p.is_banned) return false;
     if (statusFilter === 'banned' && !p.is_banned) return false;
-    if (tierFilter !== 'all' && (p.tier || 'free') !== tierFilter) return false;
+    if (packFilter === 'has_pack' && !p.last_purchased_pack_id) return false;
+    if (packFilter === 'no_pack' && p.last_purchased_pack_id) return false;
     if (languageFilter !== 'all' && (p.language || 'tr') !== languageFilter) return false;
     if (!isInDateRange(p.created_at, dateRange)) return false;
+    if (dateFrom && p.created_at < dateFrom) return false;
+    if (dateTo && p.created_at > (dateTo + 'T23:59:59.999Z')) return false;
     return true;
   });
 
@@ -125,24 +135,87 @@ export default function AdminUsers() {
 
   const setCredits = async (id: string, credits: number) => {
     if (!supabase) return;
+    setCreditError(null);
     setSavingId(id);
-    await supabase.from('profiles').update({ credits, updated_at: new Date().toISOString() }).eq('id', id);
-    setList((prev) => prev.map((p) => (p.id === id ? { ...p, credits } : p)));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setCreditError('Oturum bulunamadı. Yeniden giriş yapın.');
+        setSavingId(null);
+        return;
+      }
+      const res = await fetch(getApiUrl('/api/admin/set-credits'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ userId: id, credits }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCreditError(data?.error || `Kredi güncellenemedi (${res.status})`);
+        setSavingId(null);
+        return;
+      }
+      setList((prev) => prev.map((p) => (p.id === id ? { ...p, credits: data.credits ?? credits } : p)));
+    } catch (e) {
+      setCreditError(e instanceof Error ? e.message : 'Bağlantı hatası');
+    }
     setSavingId(null);
   };
 
-  const hasActiveFilters = roleFilter !== 'all' || statusFilter !== 'all' || tierFilter !== 'all' || languageFilter !== 'all' || dateRange !== 'all';
+  /** Satın alma olmadan hediye kredi: mevcut bakiyeye ekler */
+  const addCredits = async (id: string, amount: number) => {
+    if (!supabase || amount < 1) return;
+    const user = list.find((p) => p.id === id);
+    if (!user) return;
+    setCreditError(null);
+    setSavingId(id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setCreditError('Oturum bulunamadı. Yeniden giriş yapın.');
+        setSavingId(null);
+        return;
+      }
+      const res = await fetch(getApiUrl('/api/admin/set-credits'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ userId: id, addCredits: amount }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCreditError(data?.error || `Kredi eklenemedi (${res.status})`);
+        setSavingId(null);
+        return;
+      }
+      const newTotal = data.credits ?? (user.credits ?? 0) + amount;
+      setList((prev) => prev.map((p) => (p.id === id ? { ...p, credits: newTotal } : p)));
+    } catch (e) {
+      setCreditError(e instanceof Error ? e.message : 'Bağlantı hatası');
+    }
+    setSavingId(null);
+  };
+
+  const hasActiveFilters = roleFilter !== 'all' || statusFilter !== 'all' || packFilter !== 'all' || languageFilter !== 'all' || dateRange !== 'all' || !!dateFrom || !!dateTo;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Kullanıcılar</h1>
-        <p className="text-gray-400 text-sm mt-1">Kullanıcı listesi, kredi ve yasaklama</p>
+        <p className="text-gray-400 text-sm mt-1">Kullanıcı listesi, kredi (doğrudan düzenle veya hediye ekle) ve yasaklama</p>
       </div>
 
       {noBackend && (
         <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-200">
           Backend bağlı değil. Kullanıcı listesi yüklenemiyor.
+        </div>
+      )}
+
+      {creditError && (
+        <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-200 flex items-center justify-between gap-3">
+          <span>{creditError}</span>
+          <button type="button" onClick={() => setCreditError(null)} className="text-red-300 hover:text-white shrink-0">
+            Kapat
+          </button>
         </div>
       )}
 
@@ -177,9 +250,11 @@ export default function AdminUsers() {
                 onClick={() => {
                   setRoleFilter('all');
                   setStatusFilter('all');
-                  setTierFilter('all');
+                  setPackFilter('all');
                   setLanguageFilter('all');
                   setDateRange('all');
+                  setDateFrom('');
+                  setDateTo('');
                 }}
                 className="text-sm text-gray-400 hover:text-white"
               >
@@ -214,9 +289,9 @@ export default function AdminUsers() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Plan</label>
-              <select value={tierFilter} onChange={(e) => setTierFilter(e.target.value as TierFilter)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50">
-                {TIER_OPTIONS.map((o) => (
+              <label className="block text-xs text-gray-500 mb-1">Kredi paketi</label>
+              <select value={packFilter} onChange={(e) => setPackFilter(e.target.value as PackFilter)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50">
+                {PACK_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
@@ -230,12 +305,30 @@ export default function AdminUsers() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Kayıt tarihi</label>
+              <label className="block text-xs text-gray-500 mb-1">Kayıt (son X gün)</label>
               <select value={dateRange} onChange={(e) => setDateRange(e.target.value as DateRangeKey)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50">
                 {DATE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Tarih aralığı (başlangıç)</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Tarih aralığı (bitiş)</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50"
+              />
             </div>
           </div>
         </div>
@@ -264,7 +357,6 @@ export default function AdminUsers() {
                     <th className="p-3 font-medium">Kullanıcı</th>
                     <th className="p-3 font-medium">Kredi</th>
                     <th className="p-3 font-medium">Rol</th>
-                    <th className="p-3 font-medium">Plan</th>
                     <th className="p-3 font-medium">Son paket</th>
                     <th className="p-3 font-medium">Dil</th>
                     <th className="p-3 font-medium">Durum</th>
@@ -290,22 +382,46 @@ export default function AdminUsers() {
                         </div>
                       </td>
                       <td className="p-3">
-                        <input
-                          type="number"
-                          min={0}
-                          value={p.credits}
-                          onChange={(e) => setCredits(p.id, parseInt(e.target.value, 10) || 0)}
-                          disabled={!supabase}
-                          className="w-20 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50"
-                        />
+                        <div className="flex flex-col gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            value={p.credits}
+                            onChange={(e) => setCredits(p.id, parseInt(e.target.value, 10) || 0)}
+                            disabled={!supabase}
+                            className="w-20 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50"
+                            title="Toplam kredi (doğrudan düzenle veya aşağıdan hediye ekle)"
+                          />
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min={1}
+                              max={999}
+                              defaultValue={10}
+                              className="w-14 bg-gray-800 border border-gray-700 rounded px-1.5 py-1 text-xs text-white focus:ring-1 focus:ring-indigo-500/50"
+                              id={`gift-${p.id}`}
+                              placeholder="+"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const el = document.getElementById(`gift-${p.id}`) as HTMLInputElement | null;
+                                const n = el ? parseInt(el.value, 10) : 10;
+                                addCredits(p.id, isNaN(n) || n < 1 ? 10 : n);
+                              }}
+                              disabled={!supabase || savingId === p.id}
+                              className="text-xs px-2 py-1 rounded bg-emerald-600/80 hover:bg-emerald-500 text-white disabled:opacity-50"
+                              title="Hediye kredi ekle (satın alma gerekmez)"
+                            >
+                              Ekle
+                            </button>
+                          </div>
+                        </div>
                       </td>
                       <td className="p-3">
                         <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${p.role === 'admin' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-gray-700 text-gray-300'}`}>
                           {p.role}
                         </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="text-sm text-gray-400">{(p.tier || 'free').toLowerCase()}</span>
                       </td>
                       <td className="p-3">
                         <span className="text-sm text-gray-400" title={p.last_purchased_pack_id ?? ''}>

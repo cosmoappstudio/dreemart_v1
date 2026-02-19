@@ -107,7 +107,15 @@ export default function MainApp() {
   useEffect(() => {
     if (!user?.id || !supabase || isDemoMode) return;
     supabase.from('dreams').select('id, created_at, prompt, image_url, interpretation, artists(name)').eq('user_id', user.id).order('created_at', { ascending: false }).then(({ data }) => {
-      setDreams((data || []).map((r: { artists: { name: string } | null }) => mapDbDream({ ...r, artists: r.artists })));
+      const rows = (data || []) as Array<{ id: string; created_at: string; prompt: string; image_url: string | null; interpretation: string | null; artists?: { name: string } | { name: string }[] | null }>;
+      setDreams(rows.map((r) => mapDbDream({
+        id: r.id,
+        created_at: r.created_at,
+        prompt: r.prompt,
+        image_url: r.image_url,
+        interpretation: r.interpretation,
+        artists: Array.isArray(r.artists) ? (r.artists[0] ?? null) : r.artists ?? null,
+      })));
     });
   }, [user?.id, isDemoMode]);
 
@@ -251,7 +259,7 @@ export default function MainApp() {
     return acc;
   }, {});
   const favoriteArtistName = Object.keys(artistCounts).length
-    ? Object.entries(artistCounts).sort((a, b) => b[1] - a[1])[0][0]
+    ? (Object.entries(artistCounts) as [string, number][]).sort((a, b) => b[1] - a[1])[0][0]
     : null;
   const favoriteCount = favoriteArtistName ? artistCounts[favoriteArtistName] : 0;
   const favoriteArtistImage = favoriteArtistName ? artists.find(a => a.name === favoriteArtistName)?.imageUrl : null;
@@ -321,7 +329,7 @@ export default function MainApp() {
     </div>
   );
 
-  const HomeView = () => (
+  const homeContent = (
     <>
       <header className="pt-8 pb-6 px-6 flex items-center justify-between md:hidden">
         <div className="flex items-center gap-2">
@@ -393,7 +401,7 @@ export default function MainApp() {
     </>
   );
 
-  const GalleryView = () => (
+  const galleryContent = (
     <>
       <header className="pt-8 pb-6 px-6 flex items-center justify-between">
         <h1 className="text-3xl font-serif font-bold text-white">{t('galleryTitle')}</h1>
@@ -424,7 +432,7 @@ export default function MainApp() {
     </>
   );
 
-  const ProfileView = () => (
+  const profileContent = (
     <>
       <header className="pt-8 pb-6 px-6 flex items-center justify-between">
         <h1 className="text-3xl font-serif font-bold text-white">{t('profileTitle')}</h1>
@@ -499,10 +507,11 @@ export default function MainApp() {
           <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
             <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider mb-3">{t('styleBreakdown')}</div>
             <div className="space-y-2">
-              {Object.entries(artistCounts)
+              {(Object.entries(artistCounts) as [string, number][])
                 .sort((a, b) => b[1] - a[1])
                 .map(([name, count]) => {
-                  const maxCount = Math.max(...Object.values(artistCounts));
+                  const values = Object.values(artistCounts) as number[];
+                  const maxCount = Math.max(...values);
                   const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
                   return (
                     <div key={name} className="flex items-center gap-3">
@@ -632,9 +641,9 @@ export default function MainApp() {
         {!showSuccessView && <Sidebar />}
         <div className="flex-1 flex flex-col min-w-0">
           {showSuccessView && <SuccessView />}
-          {activeTab === 'home' && !showSuccessView && <HomeView />}
-          {activeTab === 'gallery' && !showSuccessView && <GalleryView />}
-          {activeTab === 'profile' && !showSuccessView && <ProfileView />}
+          {activeTab === 'home' && !showSuccessView && homeContent}
+          {activeTab === 'gallery' && !showSuccessView && galleryContent}
+          {activeTab === 'profile' && !showSuccessView && profileContent}
         </div>
         {!showSuccessView && (
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 w-full bg-[#0B0D17]/90 backdrop-blur-lg border-t border-white/10 pb-safe">

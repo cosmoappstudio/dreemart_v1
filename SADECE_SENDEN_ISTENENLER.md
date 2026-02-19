@@ -61,7 +61,7 @@ UPDATE profiles SET role = 'admin' WHERE email = 'gokturk4business@gmail.com';
 
 - Kodu GitHub’a push et
 - **Vercel** → Add New Project → Repo’yu seç
-- **Environment Variables** ekle: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `REPLICATE_API_TOKEN`, (isteğe bağlı) `VITE_APP_URL=dreemart-v1.vercel.app`, `VITE_ADMIN_PATH=yönetim` (admin panel gizli path; varsayılan `/yönetim`)
+- **Environment Variables** ekle: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `REPLICATE_API_TOKEN`, (isteğe bağlı) `VITE_APP_URL=dreemart-v1.vercel.app`, `VITE_ADMIN_PATH=yonetimofisi` (admin panel gizli path; varsayılan `/yonetimofisi`)
 - İsteğe bağlı: **Vercel** → **Settings** → **Domains** → `dreemart.app` ekle → DNS’te CNAME/A kaydını tanımla
 
 ---

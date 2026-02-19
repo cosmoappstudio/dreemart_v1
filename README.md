@@ -93,7 +93,7 @@ npm run preview
 
 - `App.tsx` — Router, login, korumalı/admin route’lar
 - `MainApp.tsx` — Ana uygulama (rüya girişi, galeri, profil)
-- `admin/` — Admin paneli (gizli URL: varsayılan `/yönetim`; `VITE_ADMIN_PATH` ile değiştirilebilir)
+- `admin/` — Admin paneli (gizli URL: varsayılan `/yonetimofisi`; `VITE_ADMIN_PATH` ile değiştirilebilir)
 - `api/` — Vercel serverless: `generate-dream`, `paddle-webhook`
 - `context/AuthContext.tsx` — Auth state, Google sign-in
 - `lib/supabase.ts` — Supabase client
