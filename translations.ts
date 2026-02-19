@@ -42,6 +42,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // Profile
     profileTitle: "Profilim",
     userTitle: "Rüya Yolcusu",
+    profileEmail: "E-posta",
+    profileUsername: "Kullanıcı adı",
+    profileUserId: "Kullanıcı ID",
     freePlan: "ÜCRETSİZ PLAN",
     proPlan: "PRO ÜYE",
     upgradeBannerTitle: "Premium'a Geç",
@@ -83,6 +86,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     monthlyTitle: "Aylık Bilge",
     monthlyPeriod: "/ay",
     credits10Title: "10 Rüya Kredisi",
+    credits50Title: "50 Rüya Kredisi",
     
     // Features
     featUnlimited: "Sınırsız Rüya Üretimi",
@@ -93,6 +97,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     feat4K: "4K Çözünürlük",
     featHistory: "Tüm Geçmişi Kaydet",
     feat10Dreams: "10 Rüya Üretimi",
+    feat50Dreams: "50 Rüya Üretimi",
     featStandardSpeed: "Standart Hız"
   },
   en: {
@@ -127,6 +132,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     works: "Works",
     profileTitle: "My Profile",
     userTitle: "Dream Traveler",
+    profileEmail: "Email",
+    profileUsername: "Username",
+    profileUserId: "User ID",
     freePlan: "FREE PLAN",
     proPlan: "PRO MEMBER",
     upgradeBannerTitle: "Go Premium",
@@ -162,6 +170,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     monthlyTitle: "Monthly Sage",
     monthlyPeriod: "/month",
     credits10Title: "10 Dream Credits",
+    credits50Title: "50 Dream Credits",
     featUnlimited: "Unlimited Generations",
     featAllArtists: "All Artists",
     featDetailed: "Detailed Interpretations",
@@ -170,6 +179,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     feat4K: "4K Resolution",
     featHistory: "Save Full History",
     feat10Dreams: "10 Dream Generations",
+    feat50Dreams: "50 Dream Generations",
     featStandardSpeed: "Standard Speed"
   },
   es: {
@@ -204,6 +214,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     works: "Obras",
     profileTitle: "Mi Perfil",
     userTitle: "Viajero de Sueños",
+    profileEmail: "Correo",
+    profileUsername: "Usuario",
+    profileUserId: "ID de usuario",
     freePlan: "PLAN GRATIS",
     proPlan: "MIEMBRO PRO",
     upgradeBannerTitle: "Hazte Premium",
@@ -239,6 +252,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     monthlyTitle: "Sabio Mensual",
     monthlyPeriod: "/mes",
     credits10Title: "10 Créditos de Sueño",
+    credits50Title: "50 Créditos de Sueño",
     featUnlimited: "Generación Ilimitada",
     featAllArtists: "Todos los Artistas",
     featDetailed: "Interpretaciones Detalladas",
@@ -247,6 +261,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     feat4K: "Resolución 4K",
     featHistory: "Guardar Historial",
     feat10Dreams: "10 Generaciones",
+    feat50Dreams: "50 Generaciones",
     featStandardSpeed: "Velocidad Estándar"
   },
   de: {
@@ -281,6 +296,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     works: "Werke",
     profileTitle: "Mein Profil",
     userTitle: "Traumreisender",
+    profileEmail: "E-Mail",
+    profileUsername: "Benutzername",
+    profileUserId: "Benutzer-ID",
     freePlan: "KOSTENLOS",
     proPlan: "PRO MITGLIED",
     upgradeBannerTitle: "Premium Werden",
@@ -316,6 +334,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     monthlyTitle: "Monats-Weise",
     monthlyPeriod: "/Monat",
     credits10Title: "10 Traum-Credits",
+    credits50Title: "50 Traum-Credits",
     featUnlimited: "Unbegrenzte Generierung",
     featAllArtists: "Alle Künstler",
     featDetailed: "Detaillierte Deutung",
@@ -324,6 +343,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     feat4K: "4K Auflösung",
     featHistory: "Verlauf Speichern",
     feat10Dreams: "10 Traum-Generierungen",
+    feat50Dreams: "50 Traum-Generierungen",
     featStandardSpeed: "Standardgeschwindigkeit"
   }
 };

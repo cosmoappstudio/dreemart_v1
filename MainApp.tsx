@@ -186,6 +186,7 @@ export default function MainApp() {
 
   const getCreditPacks = () => [
     { id: 'credits_10', title: t('credits10Title'), price: '₺29.99', features: [t('feat10Dreams'), t('featStandardSpeed')], recommended: false },
+    { id: 'credits_50', title: t('credits50Title'), price: '₺99', features: [t('feat50Dreams'), t('featStandardSpeed')], recommended: true },
   ];
 
   // Gamification: artist counts, favorite, score, level
@@ -220,6 +221,7 @@ export default function MainApp() {
         <div className="px-6 pb-6 space-y-4">
           {getCreditPacks().map((pack) => (
             <div key={pack.id} onClick={() => handlePurchase(pack.id)} className="relative p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all cursor-pointer flex items-center justify-between">
+              {pack.recommended && <span className="absolute top-2 right-2 text-[10px] font-bold uppercase tracking-wider text-gold-400 bg-gold-500/20 px-2 py-0.5 rounded">{t('mostPopular')}</span>}
               <div>
                 <h3 className="font-bold text-white">{pack.title}</h3>
                 <div className="text-xs text-gray-400 mt-1 flex gap-2">{pack.features.map((f, i) => <span key={i}>• {f}</span>)}</div>
@@ -274,7 +276,7 @@ export default function MainApp() {
             {isDemoMode && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300">Demo</span>}
           </div>
         </div>
-        <button onClick={() => setShowPaywall(true)} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full border border-white/5">
+        <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full border border-white/5">
           <Zap className={`w-3.5 h-3.5 ${tier === 'PRO' ? 'text-gold-400 fill-gold-400' : 'text-gray-400'}`} />
           <span className="text-xs font-bold font-mono text-gray-200">{tier === 'PRO' ? t('generateButtonPro') : credits}</span>
         </button>
@@ -383,9 +385,14 @@ export default function MainApp() {
             {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : (profile?.full_name?.[0] || user?.email?.[0] || '?')}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-white truncate">{profile?.full_name || t('userTitle')}</h2>
+            <h2 className="text-lg font-bold text-white truncate">{profile?.username || profile?.full_name || t('userTitle')}</h2>
             <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold mt-1 ${tier === 'PRO' ? 'bg-gold-500/20 text-gold-400 border border-gold-500/30' : 'bg-gray-700 text-gray-300'}`}>
               {tier === 'PRO' && <Crown className="w-3 h-3 fill-current" />}{tier === 'PRO' ? t('proPlan') : t('freePlan')}
+            </div>
+            <div className="mt-3 space-y-1 text-xs text-gray-400">
+              <p className="flex flex-wrap items-center gap-1.5"><span className="text-gray-500 uppercase tracking-wider">{t('profileEmail')}:</span><span className="text-gray-300 truncate">{user?.email ?? profile?.email ?? '—'}</span></p>
+              <p className="flex flex-wrap items-center gap-1.5"><span className="text-gray-500 uppercase tracking-wider">{t('profileUsername')}:</span><span className="text-gray-300 font-mono">{profile?.username ?? '—'}</span></p>
+              <p className="flex flex-wrap items-center gap-1.5"><span className="text-gray-500 uppercase tracking-wider">{t('profileUserId')}:</span><span className="text-gray-300 font-mono truncate">{profile?.id ?? user?.id ?? '—'}</span></p>
             </div>
           </div>
         </div>
@@ -395,7 +402,7 @@ export default function MainApp() {
           <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider"><Zap className="w-3 h-3" />{t('creditsRemaining')}</div>
             <div className="text-2xl font-serif font-bold text-white">{tier === 'PRO' ? '∞' : credits}</div>
-            {tier === 'FREE' && <button onClick={() => setShowPaywall(true)} className="text-xs text-gold-400 hover:text-gold-300 font-bold mt-1 text-left">{t('loadCredits')}</button>}
+            {tier === 'FREE' && <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="text-xs text-gold-400 hover:text-gold-300 font-bold mt-1 text-left">{t('loadCredits')}</button>}
           </div>
           <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider"><History className="w-3 h-3" />{t('dreamsGenerated')}</div>
@@ -548,7 +555,7 @@ export default function MainApp() {
         <Link to="/privacy" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].privacy}</Link>
         <Link to="/cookie-policy" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].cookie_policy}</Link>
         <Link to="/refund-policy" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].refund_policy}</Link>
-        <button onClick={() => setShowPaywall(true)} className="w-full mt-3 flex items-center justify-between bg-gradient-to-r from-purple-900/40 to-blue-900/40 px-4 py-3 rounded-xl border border-white/5">
+        <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="w-full mt-3 flex items-center justify-between bg-gradient-to-r from-purple-900/40 to-blue-900/40 px-4 py-3 rounded-xl border border-white/5">
           <div className="flex items-center gap-2"><Zap className={`w-4 h-4 ${tier === 'PRO' ? 'text-gold-400' : 'text-gray-400'}`} /><span className="text-sm font-bold text-gray-200">{tier === 'PRO' ? t('proPlan') : `${credits} Credits`}</span></div>
           {tier !== 'PRO' && <span className="text-xs text-gold-400 font-bold">{t('loadCredits')}</span>}
         </button>

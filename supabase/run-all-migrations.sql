@@ -13,6 +13,7 @@ CREATE TABLE profiles (
   email TEXT,
   full_name TEXT,
   avatar_url TEXT,
+  username TEXT UNIQUE,
   language app_language NOT NULL DEFAULT 'tr',
   credits INTEGER NOT NULL DEFAULT 3,
   tier subscription_tier NOT NULL DEFAULT 'free',
@@ -113,12 +114,13 @@ CREATE POLICY "Admins can insert prompt_templates" ON prompt_templates FOR INSER
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, avatar_url, credits)
+  INSERT INTO public.profiles (id, email, full_name, avatar_url, username, credits)
   VALUES (
     NEW.id,
     NEW.raw_user_meta_data ->> 'email',
     NEW.raw_user_meta_data ->> 'full_name',
     NEW.raw_user_meta_data ->> 'avatar_url',
+    'rüyacı_' || substr(md5(NEW.id::text || gen_random_uuid()::text), 1, 10),
     3
   );
   RETURN NEW;

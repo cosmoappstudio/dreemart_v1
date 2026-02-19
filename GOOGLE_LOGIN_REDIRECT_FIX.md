@@ -64,12 +64,14 @@ Giriş sonrası tarayıcı bu adrese gidiyor, Vite da o dosyayı (veya modülü)
 1. **Supabase Dashboard** → **Authentication** → **URL Configuration**
 2. **Site URL** **sadece** uygulama kökü olsun, **hiç path ekleme**:
    - Local: `http://localhost:3000` (Vite varsayılan port; farklı kullanıyorsan ona göre, örn. 5173)
-   - Production: `https://dreemart.app`
-3. **Redirect URLs** listesinde **sadece** bu kök adresler olsun:
+   - Production (Vercel): `https://dreemart-v1.vercel.app` (özel domain kullanıyorsan örn. `https://dreemart.app`)
+3. **Redirect URLs** listesinde **mutlaka** şunlar olsun (eksikse `requested path is invalid` hatası alırsın):
    - `http://localhost:3000`
    - `http://localhost:3000/**`
-   - `https://dreemart.app`
-   - `https://dreemart.app/**`
+   - `https://dreemart-v1.vercel.app`
+   - `https://dreemart-v1.vercel.app/**`
+   - `https://dreemart-v1.vercel.app/app` (giriş sonrası tam bu adrese yönlendiriliyoruz; bazı kurulumlarda wildcard yetmez, bu satırı da ekle)
+   - (isteğe bağlı) `https://dreemart.app`, `https://dreemart.app/**`, `https://dreemart.app/app`
 4. **Şunları mutlaka kaldır:** Dosya veya klasör yolu içeren tüm satırlar:
    - `.../supabase/run-all-migrations.sql`
    - `.../App.tsx`
@@ -78,7 +80,7 @@ Giriş sonrası tarayıcı bu adrese gidiyor, Vite da o dosyayı (veya modülü)
    Listede böyle bir şey varsa **Delete** ile sil.
 5. **Save** de, tarayıcıda tam çıkış yapıp tekrar **Google ile Giriş** dene.
 
-Doğru ayarlarla giriş sonrası adres `http://localhost:3000/app` (veya production’da `https://dreemart.app/app`) olur; tek sayfa uygulama bu path’i React Router ile işler ve arayüz normal görünür.
+Doğru ayarlarla giriş sonrası adres `http://localhost:3000/app` (veya production’da `https://dreemart-v1.vercel.app/app`) olur; tek sayfa uygulama bu path’i React Router ile işler ve arayüz normal görünür.
 
 **Not:** İlk anda adres çubuğunda `.../app#access_token=...&refresh_token=...` gibi uzun bir hash görebilirsin. Bu normaldir; Supabase token’ları bu şekilde iletir. Uygulama bu token’ları oturuma çevirir ve adres çubuğunu otomatik olarak temizler (`/app` kalır). Sayfa kaynak kodu olarak açılmamalı; arayüz normal DreamInk ekranı olmalıdır.
 
@@ -109,7 +111,25 @@ Hâlâ aynı ekranı görüyorsan: Adres çubuğunda tam olarak ne yazıyor? (ö
 
 ---
 
-## 4. `bad_oauth_state` / OAuth state not found or expired
+## 4. `{"error":"requested path is invalid"}` (Vercel / production)
+
+**Belirti:** Google ile giriş yaptıktan sonra sayfa `{"error":"requested path is invalid"}` JSON metnini gösteriyor.
+
+**Sebep:** Supabase, giriş sonrası seni `https://dreemart-v1.vercel.app/app` adresine yönlendiriyor; bu URL, Supabase **Redirect URLs** listesinde tanımlı değilse Supabase isteği reddediyor ve bu hatayı döndürüyor.
+
+**Yapman gerekenler:**
+
+1. **Supabase Dashboard** → **Authentication** → **URL Configuration**
+2. **Site URL:** `https://dreemart-v1.vercel.app`
+3. **Redirect URLs** listesine **şunları ekle** (yoksa):
+   - `https://dreemart-v1.vercel.app`
+   - `https://dreemart-v1.vercel.app/**`
+   - `https://dreemart-v1.vercel.app/app`
+4. **Save** → Tarayıcıda tekrar Google ile giriş dene.
+
+---
+
+## 5. `bad_oauth_state` / OAuth state not found or expired
 
 **Belirti:** Giriş sonrası adres şöyle açılıyor:  
 `http://localhost:3000/?error=invalid_request&error_code=bad_oauth_state&error_description=OAuth+state+not+found+or+expired`

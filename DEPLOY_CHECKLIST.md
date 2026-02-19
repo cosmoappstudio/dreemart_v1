@@ -31,8 +31,8 @@
 ## 4. Supabase redirect (1 dk)
 
 - **Authentication** → **URL Configuration**
-- **Site URL**: `https://dreemart.app`
-- **Redirect URLs**: `https://dreemart.app/**`
+- **Site URL**: `https://dreemart-v1.vercel.app` (veya özel domain)
+- **Redirect URLs**: `https://dreemart-v1.vercel.app`, `https://dreemart-v1.vercel.app/**`
 
 ## 5. İlk admin (1 dk)
 
@@ -46,11 +46,11 @@ UPDATE profiles SET role = 'admin' WHERE email = 'SENIN_GOOGLE_EMAIL@gmail.com';
 
 ## 6. (Opsiyonel) Paddle
 
-- Ürün/fiyat oluştur → Webhook URL: `https://dreemart.app/api/paddle-webhook`
+- Ürün/fiyat oluştur → Webhook URL: `https://dreemart-v1.vercel.app/api/paddle-webhook`
 - Env: `PADDLE_WEBHOOK_SECRET`, `PADDLE_API_KEY`, `VITE_PADDLE_CHECKOUT_URL`
 
 ---
 
 **Test:**  
-- `https://dreemart.app` → Google ile giriş → Rüya yaz → Ressam seç → Görselleştir  
-- `https://dreemart.app/admin` → Admin girişi (sadece role=admin olan kullanıcı)
+- `https://dreemart-v1.vercel.app` → Google ile giriş → Rüya yaz → Ressam seç → Görselleştir  
+- `https://dreemart-v1.vercel.app/admin` → Admin girişi (sadece role=admin olan kullanıcı)

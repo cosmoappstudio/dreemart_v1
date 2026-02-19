@@ -1,6 +1,6 @@
 # Sadece senden istenenler
 
-Kod ve dokümanlar **dreemart.app** için güncellendi. Aşağıdakileri **yalnızca sen** yapabilirsin (Supabase / Vercel / Google / local bilgisayar erişimi gerekiyor).
+Kod ve dokümanlar **dreemart-v1.vercel.app** (Vercel) için güncellendi. Aşağıdakileri **yalnızca sen** yapabilirsin (Supabase / Vercel / Google / local bilgisayar erişimi gerekiyor).
 
 ---
 
@@ -60,16 +60,16 @@ UPDATE profiles SET role = 'admin' WHERE email = 'gokturk4business@gmail.com';
 
 - Kodu GitHub’a push et
 - **Vercel** → Add New Project → Repo’yu seç
-- **Environment Variables** ekle: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `REPLICATE_API_TOKEN`, (isteğe bağlı) `VITE_APP_URL=dreemart.app` veya `https://dreemart.app`
-- **Vercel** → Proje → **Settings** → **Domains** → `dreemart.app` ekle → DNS’te Vercel’in gösterdiği CNAME/A kaydını domain sağlayıcında tanımla
+- **Environment Variables** ekle: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `REPLICATE_API_TOKEN`, (isteğe bağlı) `VITE_APP_URL=dreemart-v1.vercel.app`
+- İsteğe bağlı: **Vercel** → **Settings** → **Domains** → `dreemart.app` ekle → DNS’te CNAME/A kaydını tanımla
 
 ---
 
 ## 7. Supabase’te production URL
 
 - **Supabase** → **Authentication** → **URL Configuration**
-- **Site URL:** `https://dreemart.app`
-- **Redirect URLs:** `https://dreemart.app`, `https://dreemart.app/**`
+- **Site URL:** `https://dreemart-v1.vercel.app`
+- **Redirect URLs:** `https://dreemart-v1.vercel.app`, `https://dreemart-v1.vercel.app/**`, `https://dreemart-v1.vercel.app/app` (son satır yoksa giriş sonrası "requested path is invalid" hatası alırsın)
 
 ---
 

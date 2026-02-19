@@ -1,6 +1,6 @@
 # DreamInk Backend Kurulum Rehberi
 
-**Domain:** dreemart.app
+**Domain:** dreemart-v1.vercel.app (production); isteğe bağlı özel domain: dreemart.app
 
 **Sadece senin yapman gerekenlerin kısa listesi → [SADECE_SENDEN_ISTENENLER.md](./SADECE_SENDEN_ISTENENLER.md)**
 
@@ -104,11 +104,11 @@ UPDATE profiles SET role = 'admin' WHERE email = 'gokturk4business@gmail.com';
 | `PADDLE_API_KEY` | (Paddle’dan; ödeme açacaksan) |
 | `PADDLE_WEBHOOK_SECRET` | (Paddle webhook secret) |
 | `VITE_PADDLE_CHECKOUT_URL` | (Checkout link; ödeme açacaksan) |
-| `VITE_APP_URL` | `dreemart.app` (veya Vercel otomatik set eder) |
+| `VITE_APP_URL` | `dreemart-v1.vercel.app` (veya Vercel otomatik set eder) |
 
 4. Deploy’dan sonra **Supabase** → **Authentication** → **URL Configuration**:
-   - **Site URL:** `https://dreemart.app`
-   - **Redirect URLs:** `https://dreemart.app`, `https://dreemart.app/**`, `http://localhost:5173` (local için)
+   - **Site URL:** `https://dreemart-v1.vercel.app` (veya özel domain)
+   - **Redirect URLs:** `https://dreemart-v1.vercel.app`, `https://dreemart-v1.vercel.app/**`, `http://localhost:5173` (local için)
 
 Bundan sonra production’da da Google ile giriş ve API çağrıları çalışır.
 
@@ -119,7 +119,7 @@ Bundan sonra production’da da Google ile giriş ve API çağrıları çalış�
 Verdiğin **client-side token** (`live_f696de9ba331368fe7699dcdc8c`) genelde frontend’de Paddle.js ile kullanılır. Backend için:
 
 - **Paddle Dashboard** → Developer Tools / API keys → **API Key** (server-side) → `PADDLE_API_KEY`
-- **Webhooks** → yeni webhook → URL: `https://dreemart.app/api/paddle-webhook` → **Webhook secret** → `PADDLE_WEBHOOK_SECRET`
+- **Webhooks** → yeni webhook → URL: `https://dreemart-v1.vercel.app/api/paddle-webhook` → **Webhook secret** → `PADDLE_WEBHOOK_SECRET`
 
 Kredi paketleri için checkout link’ini Paddle’da oluşturup `VITE_PADDLE_CHECKOUT_URL` olarak ayarlayabilirsin. Mevcut kod `credits_10` / `credits_50` product ID’lerini tanıyor; farklı paketler kullanacaksan `api/paddle-webhook.ts` içindeki `CREDITS_BY_PRODUCT`’ı güncellemen gerekir.
 
@@ -140,6 +140,6 @@ Bu adımlardan sonra backend (Supabase + Replicate + isteğe bağlı Paddle) pro
 
 ---
 
-## Domain: dreemart.app
+## Domain
 
-Production domain **dreemart.app** olarak ayarlandı. Vercel’de projeye **Settings → Domains**’ten `dreemart.app` ekleyip DNS’te (domain sağlayıcında) Vercel’in verdiği CNAME / A kaydını tanımlaman yeterli.
+Production URL: **https://dreemart-v1.vercel.app**. İsteğe bağlı: **Settings → Domains**’ten `dreemart.app` ekleyip DNS’te CNAME/A kaydını tanımlayabilirsin.

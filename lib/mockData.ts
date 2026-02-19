@@ -8,6 +8,7 @@ export const MOCK_DEMO_PROFILE: Profile = {
   email: 'demo@dreamink.app',
   full_name: 'Demo Kullanıcı',
   avatar_url: null,
+  username: 'demo_rüyacı',
   language: 'tr',
   credits: 5,
   tier: 'free',

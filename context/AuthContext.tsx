@@ -8,6 +8,7 @@ export interface Profile {
   email: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  username: string | null;
   language: string;
   credits: number;
   tier: string;
@@ -58,7 +59,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfile = async (uid: string) => {
     if (!supabase) return;
     const { data } = await supabase.from('profiles').select('*').eq('id', uid).single();
-    setProfileState(data as Profile | null);
+    let profileData = data as Profile | null;
+    if (profileData && !profileData.username) {
+      const username = 'rüyacı_' + Math.random().toString(36).slice(2, 12);
+      const { error } = await supabase.from('profiles').update({ username, updated_at: new Date().toISOString() }).eq('id', uid);
+      if (!error) profileData = { ...profileData, username };
+    }
+    setProfileState(profileData);
   };
 
   const refreshProfile = async () => {
