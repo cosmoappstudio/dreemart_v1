@@ -30,6 +30,8 @@ export interface PricingPack {
   price: string;
   per: string;
   credits_text: string;
+  credits_amount?: number;
+  paddle_product_id?: string | null;
   four_k: boolean;
   badge: string | null;
   sort_order: number;

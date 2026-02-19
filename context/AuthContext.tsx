@@ -14,6 +14,7 @@ export interface Profile {
   tier: string;
   role: string;
   is_banned: boolean;
+  last_purchased_pack_id?: string | null;
 }
 
 const DEMO_USER: User = {

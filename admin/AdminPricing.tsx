@@ -18,7 +18,7 @@ export default function AdminPricing() {
     }
     supabase
       .from('pricing_packs')
-      .select('id, name, price, per, credits_text, four_k, badge, sort_order')
+      .select('id, name, price, per, credits_text, credits_amount, paddle_product_id, four_k, badge, sort_order')
       .order('sort_order')
       .then(({ data }) => {
         setList((data || []) as PricingPack[]);
@@ -40,6 +40,8 @@ export default function AdminPricing() {
         price: row.price,
         per: row.per,
         credits_text: row.credits_text,
+        credits_amount: row.credits_amount ?? 0,
+        paddle_product_id: row.paddle_product_id?.trim() || null,
         four_k: row.four_k,
         badge: row.badge || null,
         sort_order: row.sort_order,
@@ -60,6 +62,8 @@ export default function AdminPricing() {
         price: '₺0',
         per: '/ 0 Kredi',
         credits_text: '0 Kredi',
+        credits_amount: 0,
+        paddle_product_id: null,
         four_k: false,
         badge: null,
         sort_order: list.length,
@@ -83,7 +87,7 @@ export default function AdminPricing() {
       <div>
         <h1 className="text-2xl font-bold text-white">Kredi Paketleri</h1>
         <p className="text-gray-400 text-sm mt-1">
-          Landing sayfasındaki fiyatlandırma bölümü. name, price, per, credits_text, four_k ve badge (örn. &quot;Popüler&quot;) alanlarını düzenleyin.
+          Kredi paketleri: name, price, per, credits_text (gösterim), credits_amount (sayı – Paddle webhook bunu kullanır), paddle_product_id (Paddle ürün ID). four_k ve badge opsiyonel.
         </p>
       </div>
 
@@ -141,13 +145,35 @@ export default function AdminPricing() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Kredi metni (gösterim, örn. 5 Kredi)</label>
+                  <input
+                    type="text"
+                    value={row.credits_text}
+                    onChange={(e) => update(row.id, 'credits_text', e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Kredi miktarı (sayı) – webhook bu değeri kullanır</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={row.credits_amount ?? 0}
+                    onChange={(e) => update(row.id, 'credits_amount', parseInt(e.target.value, 10) || 0)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+                  />
+                </div>
+              </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Kredi metni (örn. 5 Kredi)</label>
+                <label className="block text-xs text-gray-500 mb-1">Paddle ürün ID (Paddle’daki product_id; boş bırakılırsa paket id ile eşleşir)</label>
                 <input
                   type="text"
-                  value={row.credits_text}
-                  onChange={(e) => update(row.id, 'credits_text', e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+                  value={row.paddle_product_id ?? ''}
+                  onChange={(e) => update(row.id, 'paddle_product_id', e.target.value.trim() || null)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono"
+                  placeholder="pri_xxx veya boş"
                 />
               </div>
               <div className="flex items-center gap-4">

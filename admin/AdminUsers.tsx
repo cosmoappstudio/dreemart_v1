@@ -13,6 +13,8 @@ interface ProfileRow {
   language: string;
   is_banned: boolean;
   created_at: string;
+  last_purchased_pack_id?: string | null;
+  pricing_packs?: { name: string } | null;
 }
 
 type RoleFilter = 'all' | 'user' | 'admin';
@@ -85,7 +87,7 @@ export default function AdminUsers() {
     }
     supabase
       .from('profiles')
-      .select('id, email, full_name, avatar_url, credits, role, tier, language, is_banned, created_at')
+      .select('id, email, full_name, avatar_url, credits, role, tier, language, is_banned, created_at, last_purchased_pack_id, pricing_packs(name)')
       .order('created_at', { ascending: false })
       .limit(500)
       .then(({ data }) => {
@@ -263,6 +265,7 @@ export default function AdminUsers() {
                     <th className="p-3 font-medium">Kredi</th>
                     <th className="p-3 font-medium">Rol</th>
                     <th className="p-3 font-medium">Plan</th>
+                    <th className="p-3 font-medium">Son paket</th>
                     <th className="p-3 font-medium">Dil</th>
                     <th className="p-3 font-medium">Durum</th>
                     <th className="p-3 font-medium text-right">İşlem</th>
@@ -303,6 +306,11 @@ export default function AdminUsers() {
                       </td>
                       <td className="p-3">
                         <span className="text-sm text-gray-400">{(p.tier || 'free').toLowerCase()}</span>
+                      </td>
+                      <td className="p-3">
+                        <span className="text-sm text-gray-400" title={p.last_purchased_pack_id ?? ''}>
+                          {p.pricing_packs?.name ?? (p.last_purchased_pack_id ? '…' : '—')}
+                        </span>
                       </td>
                       <td className="p-3">
                         <span className="text-sm text-gray-400 uppercase">{(p.language || 'tr')}</span>

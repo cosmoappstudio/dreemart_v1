@@ -4,6 +4,7 @@
 
 -- ========== 001_initial ==========
 CREATE TYPE app_language AS ENUM ('tr', 'en', 'es', 'de');
+-- free = kredi kullanır, pro = sınırsız (ileride). Abonelik yok, sadece kredi paketleri.
 CREATE TYPE subscription_tier AS ENUM ('free', 'pro');
 CREATE TYPE moderation_status AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE credit_reason AS ENUM ('welcome', 'purchase', 'dream_used', 'admin_adjustment', 'refund');
@@ -296,6 +297,8 @@ CREATE TABLE IF NOT EXISTS pricing_packs (
   price TEXT NOT NULL,
   per TEXT NOT NULL,
   credits_text TEXT NOT NULL,
+  credits_amount INTEGER NOT NULL DEFAULT 0,
+  paddle_product_id TEXT,
   four_k BOOLEAN NOT NULL DEFAULT FALSE,
   badge TEXT,
   sort_order INT NOT NULL DEFAULT 0,
@@ -308,14 +311,14 @@ CREATE POLICY "Admins can manage pricing_packs" ON pricing_packs FOR ALL
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'))
   WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
-INSERT INTO pricing_packs (name, price, per, credits_text, four_k, badge, sort_order)
-SELECT p.name, p.price, p.per, p.credits_text, p.four_k, p.badge, p.sort_order
+INSERT INTO pricing_packs (name, price, per, credits_text, credits_amount, four_k, badge, sort_order)
+SELECT p.name, p.price, p.per, p.credits_text, p.credits_amount, p.four_k, p.badge, p.sort_order
 FROM (VALUES
-  ('DENEME', '₺59', '/ 5 Kredi', '5 Kredi', FALSE, NULL::text, 0),
-  ('BAŞLANGIÇ', '₺99', '/ 15 Kredi', '15 Kredi', FALSE, NULL::text, 1),
-  ('POPÜLER', '₺149', '/ 30 Kredi', '30 Kredi', TRUE, 'Popüler', 2),
-  ('PRO', '₺299', '/ 100 Kredi', '100 Kredi', TRUE, NULL::text, 3)
-) AS p(name, price, per, credits_text, four_k, badge, sort_order)
+  ('DENEME', '₺59', '/ 5 Kredi', '5 Kredi', 5, FALSE, NULL::text, 0),
+  ('BAŞLANGIÇ', '₺99', '/ 15 Kredi', '15 Kredi', 15, FALSE, NULL::text, 1),
+  ('POPÜLER', '₺149', '/ 30 Kredi', '30 Kredi', 30, TRUE, 'Popüler', 2),
+  ('PRO', '₺299', '/ 100 Kredi', '100 Kredi', 100, TRUE, NULL::text, 3)
+) AS p(name, price, per, credits_text, credits_amount, four_k, badge, sort_order)
 WHERE (SELECT COUNT(*) FROM pricing_packs) = 0;
 
 CREATE TABLE IF NOT EXISTS site_settings (
@@ -329,6 +332,9 @@ CREATE POLICY "Admins can manage site_settings" ON site_settings FOR ALL
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'))
   WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 INSERT INTO site_settings (key, value) VALUES ('logo_url', '') ON CONFLICT (key) DO NOTHING;
+
+-- profiles: son alınan kredi paketi (pricing_packs sonra oluşturulduğu için burada eklenir)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS last_purchased_pack_id UUID REFERENCES pricing_packs(id) ON DELETE SET NULL;
 
 -- ========== 008_legal_cookie_policy ==========
 INSERT INTO legal_pages (key, language, title, content) VALUES

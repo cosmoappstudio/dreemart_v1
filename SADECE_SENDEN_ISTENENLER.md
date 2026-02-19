@@ -8,7 +8,8 @@ Kod ve dokümanlar **dreemart-v1.vercel.app** (Vercel) için güncellendi. Aşa�
 
 - **Supabase Dashboard** → [supabase.com/dashboard](https://supabase.com/dashboard) → projen
 - **SQL Editor** → **New query**
-- `supabase/run-all-migrations.sql` dosyasının **tüm içeriğini** kopyala → yapıştır → **Run**
+- **İlk kurulumda:** `supabase/run-all-migrations.sql` dosyasının **tüm içeriğini** kopyala → yapıştır → **Run**
+- **Mevcut projede yeni güncellemeler:** SQL Editor’da **New query** aç; sırayla şu iki dosyanın **içeriğini** kopyala → yapıştır → **Run**: (1) `supabase/migrations/009_profiles_username.sql`, (2) `supabase/migrations/010_pricing_credits_amount_and_profile_pack.sql`. "Column already exists" alırsan o adımı atla.
 
 ---
 

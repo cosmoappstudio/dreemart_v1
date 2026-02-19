@@ -49,12 +49,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const customData = body?.data?.custom_data ?? body?.custom_data ?? {};
     const userId = customData.user_id ?? customData.userId;
     const productId = (body?.data?.product_id ?? body?.product_id ?? customData.product_id)?.toString?.() ?? customData.product_id;
-    const credits = CREDITS_BY_PRODUCT[productId] ?? (productId?.includes('credits') ? 10 : 0);
+    let credits = 0;
+    let packId: string | null = null;
+    if (productId) {
+      const { data: byPaddle } = await admin.from('pricing_packs').select('id, credits_amount').eq('paddle_product_id', productId).maybeSingle();
+      const pack = byPaddle ?? (productId.match(/^[0-9a-f-]{36}$/i)
+        ? (await admin.from('pricing_packs').select('id, credits_amount').eq('id', productId).maybeSingle()).data
+        : null;
+      if (pack?.credits_amount != null && pack.credits_amount > 0) {
+        credits = pack.credits_amount;
+        packId = pack.id;
+      } else {
+        credits = CREDITS_BY_PRODUCT[productId] ?? (productId?.includes('credits') ? 10 : 0);
+      }
+    }
     if (userId && credits > 0) {
       const { data: profile } = await admin.from('profiles').select('credits').eq('id', userId).single();
       if (profile) {
         const newCredits = (profile.credits ?? 0) + credits;
-        await admin.from('profiles').update({ credits: newCredits, updated_at: new Date().toISOString() }).eq('id', userId);
+        const updatePayload: { credits: number; updated_at: string; last_purchased_pack_id?: string | null } = {
+          credits: newCredits,
+          updated_at: new Date().toISOString(),
+        };
+        if (packId) updatePayload.last_purchased_pack_id = packId;
+        await admin.from('profiles').update(updatePayload).eq('id', userId);
         await admin.from('credit_transactions').insert({
           user_id: userId,
           amount: credits,
