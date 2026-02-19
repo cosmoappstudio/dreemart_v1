@@ -6,7 +6,7 @@ Rüyalarınızı ünlü ressamların tarzında sanat eserine dönüştüren AI w
 
 - **Google ile giriş** (Supabase Auth)
 - **Rüya görselleştirme** (Replicate Imagen-4)
-- **Rüya yorumu** (Replicate Claude 3.5 Sonnet)
+- **Rüya yorumu** (Replicate Gemini 2.5 Flash)
 - **Kredi sistemi** (Paddle ile ödeme)
 - **Admin paneli** (`/admin`) — kullanıcılar, ressamlar, promptlar
 
@@ -65,7 +65,7 @@ UPDATE profiles SET role = 'admin' WHERE email = 'senin@email.com';
 ### 5. Paddle (opsiyonel)
 
 1. [Paddle](https://paddle.com) hesabı; kredi paketi (ürün/fiyat) oluştur.
-2. Webhook URL: `https://dreemart-v1.vercel.app/api/paddle-webhook`
+2. Webhook URL: `https://dreemart.app/api/paddle-webhook`
 3. Webhook secret’ı `PADDLE_WEBHOOK_SECRET` olarak ekle.
 4. Checkout link’ini `VITE_PADDLE_CHECKOUT_URL` olarak ayarla (veya uygulama içinde dinamik oluştur).
 
@@ -86,8 +86,8 @@ npm run preview
 
 1. Repo’yu Vercel’e bağla.
 2. **Environment Variables**’a yukarıdaki tüm değişkenleri ekle (`VITE_*` ve `SUPABASE_*`, `REPLICATE_*`, `PADDLE_*`).
-3. **Supabase → Authentication → URL Configuration**’da Site URL ve Redirect URLs’e `https://dreemart-v1.vercel.app` (ve varsa özel domain) ekle.
-4. Deploy et. Replicate testi için **REPLICATE_TEST.md** dosyasına bak.
+3. **Supabase → Authentication → URL Configuration**’da Site URL ve Redirect URLs’e `https://dreemart.app` (ve varsa özel domain) ekle.
+4. Deploy et. **dreemart.app** kurulum checklist'i → **DREEMART_APP_SETUP.md**. Replicate testi → **REPLICATE_TEST.md**.
 
 ## Proje yapısı
 

@@ -119,12 +119,14 @@ export default function MainApp() {
     });
   }, [user?.id, isDemoMode]);
 
-  // Canlıda kredilerin güncel gelmesi için mount'ta ve periyodik profil yenileme
+  // Canlıda kredilerin/username güncel gelmesi için mount'ta, periyodik ve sekme odağında yenileme
   useEffect(() => {
     if (!user?.id || user.id === 'demo-user' || isDemoMode) return;
     refreshProfile();
-    const t = setInterval(refreshProfile, 60 * 1000);
-    return () => clearInterval(t);
+    const t = setInterval(refreshProfile, 30 * 1000);
+    const onFocus = () => refreshProfile();
+    window.addEventListener('focus', onFocus);
+    return () => { clearInterval(t); window.removeEventListener('focus', onFocus); };
   }, [user?.id, isDemoMode]);
 
   // Profil sekmesine geçildiğinde Supabase'den en güncel veriyi çek (username vb.)

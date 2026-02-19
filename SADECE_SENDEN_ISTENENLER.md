@@ -1,6 +1,6 @@
 # Sadece senden istenenler
 
-Kod ve dokümanlar **dreemart-v1.vercel.app** (Vercel) için güncellendi. Aşağıdakileri **yalnızca sen** yapabilirsin (Supabase / Vercel / Google / local bilgisayar erişimi gerekiyor).
+Kod ve dokümanlar **dreemart.app** (Vercel + özel domain) için güncellendi. Aşağıdakileri **yalnızca sen** yapabilirsin (Supabase / Vercel / Google / local bilgisayar erişimi gerekiyor).
 
 ---
 
@@ -9,7 +9,7 @@ Kod ve dokümanlar **dreemart-v1.vercel.app** (Vercel) için güncellendi. Aşa�
 - **Supabase Dashboard** → [supabase.com/dashboard](https://supabase.com/dashboard) → projen
 - **SQL Editor** → **New query**
 - **İlk kurulumda:** `supabase/run-all-migrations.sql` dosyasının **tüm içeriğini** kopyala → yapıştır → **Run**
-- **Mevcut projede yeni güncellemeler:** SQL Editor’da **New query** aç; sırayla şu iki dosyanın **içeriğini** kopyala → yapıştır → **Run**: (1) `supabase/migrations/009_profiles_username.sql`, (2) `supabase/migrations/010_pricing_credits_amount_and_profile_pack.sql`. "Column already exists" alırsan o adımı atla.
+- **Mevcut projede yeni güncellemeler:** SQL Editor’da **New query** aç; sırayla şu iki dosyanın **içeriğini** kopyala → yapıştır → **Run**: (1) `009_profiles_username.sql`, (2) `010_pricing_credits_amount_and_profile_pack.sql`, (3) `011_handle_new_user_credits.sql`. "Column already exists" alırsan o adımı atla.
 
 ---
 
@@ -41,7 +41,7 @@ REPLICATE_API_TOKEN=<Replicate token>
 PADDLE_API_KEY=
 PADDLE_WEBHOOK_SECRET=
 VITE_PADDLE_CHECKOUT_URL=
-VITE_APP_URL=
+VITE_APP_URL=dreemart.app
 ```
 
 ---
@@ -61,7 +61,7 @@ UPDATE profiles SET role = 'admin' WHERE email = 'gokturk4business@gmail.com';
 
 - Kodu GitHub’a push et
 - **Vercel** → Add New Project → Repo’yu seç
-- **Environment Variables** ekle: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `REPLICATE_API_TOKEN`, (isteğe bağlı) `VITE_APP_URL=dreemart-v1.vercel.app`, `VITE_ADMIN_PATH=yonetimofisi` (admin panel gizli path; varsayılan `/yonetimofisi`)
+- **Environment Variables** ekle: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `REPLICATE_API_TOKEN`, `VITE_APP_URL=dreemart.app` (domain Vercel'e bağlıysa), `VITE_ADMIN_PATH=yonetimofisi`
 - İsteğe bağlı: **Vercel** → **Settings** → **Domains** → `dreemart.app` ekle → DNS’te CNAME/A kaydını tanımla
 
 ---
@@ -69,8 +69,8 @@ UPDATE profiles SET role = 'admin' WHERE email = 'gokturk4business@gmail.com';
 ## 7. Supabase’te production URL
 
 - **Supabase** → **Authentication** → **URL Configuration**
-- **Site URL:** `https://dreemart-v1.vercel.app`
-- **Redirect URLs:** `https://dreemart-v1.vercel.app`, `https://dreemart-v1.vercel.app/**`, `https://dreemart-v1.vercel.app/app` (son satır yoksa giriş sonrası "requested path is invalid" hatası alırsın)
+- **Site URL:** `https://dreemart.app`
+- **Redirect URLs:** `https://dreemart.app`, `https://dreemart.app/**`, `https://dreemart.app/app`, `https://dreemart.app/yonetimofisi`, `https://dreemart.app/yonetimofisi/login` (admin giriş için son ikisi şart)
 
 ---
 

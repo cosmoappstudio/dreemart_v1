@@ -14,7 +14,7 @@ function getSupabaseAdmin() {
 type ReplicateModelRow = { key: string; model_identifier: string; input_preset: string };
 
 const DEFAULT_IMAGE_MODEL = 'google/imagen-4';
-const DEFAULT_INTERPRETATION_MODEL = 'anthropic/claude-3.5-sonnet';
+const DEFAULT_INTERPRETATION_MODEL = 'google/gemini-2.5-flash';
 
 function buildImageInput(preset: string, prompt: string): Record<string, unknown> {
   switch (preset) {
