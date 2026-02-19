@@ -31,7 +31,7 @@ interface AuthState {
   profile: Profile | null;
   loading: boolean;
   isDemoMode: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (redirectPath?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   setProfile: (p: Profile | null) => void;
@@ -59,12 +59,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (uid: string) => {
     if (!supabase) return;
-    const { data } = await supabase.from('profiles').select('*').eq('id', uid).single();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, avatar_url, username, credits, role, tier, language, is_banned, last_purchased_pack_id')
+      .eq('id', uid)
+      .single();
+    if (error) {
+      console.warn('fetchProfile error:', error);
+      return;
+    }
     let profileData = data as Profile | null;
-    if (profileData && !profileData.username) {
+    if (profileData && (profileData.username == null || profileData.username.trim() === '')) {
       const username = 'rüyacı_' + Math.random().toString(36).slice(2, 12);
-      const { error } = await supabase.from('profiles').update({ username, updated_at: new Date().toISOString() }).eq('id', uid);
-      if (!error) profileData = { ...profileData, username };
+      const { error: updateErr } = await supabase.from('profiles').update({ username, updated_at: new Date().toISOString() }).eq('id', uid);
+      if (!updateErr) profileData = { ...profileData, username };
     }
     setProfileState(profileData);
   };
@@ -107,10 +115,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (redirectPath?: string) => {
     if (!supabase) return;
-    // Her zaman kök origin + /app kullan; path hiç eklenmesin (bazı hesaplarda yanlış redirect olmasın).
-    const redirectTo = new URL('/app', window.location.origin).href;
+    const path = redirectPath ?? '/app';
+    const redirectTo = new URL(path, window.location.origin).href;
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },

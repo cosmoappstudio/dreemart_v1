@@ -127,6 +127,11 @@ export default function MainApp() {
     return () => clearInterval(t);
   }, [user?.id, isDemoMode]);
 
+  // Profil sekmesine geçildiğinde Supabase'den en güncel veriyi çek (username vb.)
+  useEffect(() => {
+    if (activeTab === 'profile' && user?.id && user.id !== 'demo-user' && !isDemoMode) refreshProfile();
+  }, [activeTab]);
+
   // Kredi paketleri: Admin/landing ile aynı kaynak (pricing_packs)
   useEffect(() => {
     if (!supabase || isDemoMode) return;
@@ -436,7 +441,10 @@ export default function MainApp() {
     <>
       <header className="pt-8 pb-6 px-6 flex items-center justify-between">
         <h1 className="text-3xl font-serif font-bold text-white">{t('profileTitle')}</h1>
-        <button onClick={signOut} className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white" title="Çıkış"><LogOut className="w-5 h-5" /></button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => refreshProfile()} className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white" title={language === 'tr' ? 'Profil verisini yenile' : 'Refresh profile'}><RefreshCw className="w-5 h-5" /></button>
+          <button onClick={signOut} className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white" title="Çıkış"><LogOut className="w-5 h-5" /></button>
+        </div>
       </header>
       <main className="flex-1 px-6 flex flex-col gap-6 pb-24 overflow-y-auto max-w-3xl mx-auto w-full pt-6">
         {/* User card + plan */}
