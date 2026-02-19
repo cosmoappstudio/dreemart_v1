@@ -1,0 +1,587 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
+import { supabase } from './lib/supabase';
+import { ARTISTS as FALLBACK_ARTISTS } from './constants';
+import { MOCK_DREAMS, getMockInterpretation } from './lib/mockData';
+import { Artist, LoadingState, DreamRecord, Language } from './types';
+import { TRANSLATIONS } from './translations';
+import { Link } from 'react-router-dom';
+import { Sparkles, Moon, Share2, X, Stars, User, Home, Crown, CheckCircle2, Zap, History, LayoutGrid, Calendar, Globe, LogOut, AlertCircle, RefreshCw, Palette, Award, ChevronDown } from 'lucide-react';
+import { LEGAL_LINK_LABELS } from './landingTranslations';
+
+const LANGUAGE_OPTIONS: { code: Language; flag: string; label: string }[] = [
+  { code: 'tr', flag: '🇹🇷', label: 'Türkçe' },
+  { code: 'en', flag: '🇬🇧', label: 'English' },
+  { code: 'es', flag: '🇪🇸', label: 'Español' },
+  { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
+];
+
+function mapDbArtist(row: { id: string; name: string; style_description: string; image_url: string }): Artist {
+  return {
+    id: row.id,
+    name: row.name,
+    styleDescription: row.style_description,
+    imageUrl: row.image_url,
+  };
+}
+
+function mapDbDream(row: { id: string; created_at: string; prompt: string; image_url: string | null; interpretation: string | null; artists: { name: string } | null }): DreamRecord {
+  return {
+    id: row.id,
+    date: row.created_at,
+    prompt: row.prompt,
+    imageUrl: row.image_url || '',
+    interpretation: row.interpretation || '',
+    artistName: row.artists?.name || '',
+  };
+}
+
+export default function MainApp() {
+  const { user, profile, signOut, refreshProfile, isDemoMode, setProfile } = useAuth();
+  const [activeTab, setActiveTab] = useState<'home' | 'gallery' | 'profile'>('home');
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [artistsLoading, setArtistsLoading] = useState(!!supabase && !isDemoMode);
+  const [dreams, setDreams] = useState<DreamRecord[]>(isDemoMode ? MOCK_DREAMS : []);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallView, setPaywallView] = useState<'credits'>('credits');
+  const [dreamText, setDreamText] = useState('');
+  const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+  const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [interpretation, setInterpretation] = useState<string | null>(null);
+  const [showSuccessView, setShowSuccessView] = useState(false);
+  const [selectedDreamStart, setSelectedDreamStart] = useState<DreamRecord | null>(null);
+  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
+
+  const language = (profile?.language || 'tr') as Language;
+  const currentLangOption = LANGUAGE_OPTIONS.find((o) => o.code === language) ?? LANGUAGE_OPTIONS[0];
+  const t = (key: string) => TRANSLATIONS[language]?.[key] || key;
+  const credits = profile?.credits ?? 0;
+  const tier = (profile?.tier === 'pro' ? 'PRO' : 'FREE') as 'FREE' | 'PRO';
+
+  // Load artists from Supabase or use fallback (frontend-only / demo mode)
+  useEffect(() => {
+    if (!supabase || isDemoMode) {
+      setArtists(FALLBACK_ARTISTS);
+      setSelectedArtist(FALLBACK_ARTISTS[0] ?? null);
+      setArtistsLoading(false);
+      return;
+    }
+    supabase.from('artists').select('id, name, style_description, image_url').eq('is_active', true).order('sort_order').then(({ data }) => {
+      const list = (data || []).map(mapDbArtist);
+      setArtists(list.length > 0 ? list : FALLBACK_ARTISTS);
+      setSelectedArtist(list.length > 0 ? list[0] : FALLBACK_ARTISTS[0] ?? null);
+      setArtistsLoading(false);
+    });
+  }, [isDemoMode]);
+
+  useEffect(() => {
+    if (!user?.id || !supabase || isDemoMode) return;
+    supabase.from('dreams').select('id, created_at, prompt, image_url, interpretation, artists(name)').eq('user_id', user.id).order('created_at', { ascending: false }).then(({ data }) => {
+      setDreams((data || []).map((r: { artists: { name: string } | null }) => mapDbDream({ ...r, artists: r.artists })));
+    });
+  }, [user?.id, isDemoMode]);
+
+  const handleGenerate = async () => {
+    if (!dreamText.trim() || !selectedArtist || !user) return;
+    if (tier === 'FREE' && credits <= 0) {
+      setPaywallView('credits');
+      setShowPaywall(true);
+      return;
+    }
+    setGenerateError(null);
+    setLoadingState(LoadingState.GENERATING_IMAGE);
+    setGeneratedImage(null);
+    setInterpretation(null);
+
+    if (isDemoMode) {
+      setTimeout(() => {
+        const mockImageUrl = `https://picsum.photos/seed/${encodeURIComponent(dreamText.trim().slice(0, 20))}/800/800`;
+        const mockInterpretation = getMockInterpretation(dreamText.trim(), language);
+        setGeneratedImage(mockImageUrl);
+        setInterpretation(mockInterpretation);
+        setLoadingState(LoadingState.COMPLETE);
+        const newDream: DreamRecord = {
+          id: `mock-${Date.now()}`,
+          date: new Date().toISOString(),
+          prompt: dreamText.trim(),
+          imageUrl: mockImageUrl,
+          interpretation: mockInterpretation,
+          artistName: selectedArtist.name,
+        };
+        setDreams(prev => [newDream, ...prev]);
+        setProfile(profile ? { ...profile, credits: Math.max(0, profile.credits - 1) } : null);
+        setShowSuccessView(true);
+      }, 1500);
+      return;
+    }
+
+    try {
+      const session = await supabase?.auth.getSession();
+      const token = session?.data?.session?.access_token;
+      if (!token) throw new Error('Not signed in');
+      const base = (import.meta.env.VITE_APP_URL && !import.meta.env.VITE_APP_URL.startsWith('http')) ? `https://${import.meta.env.VITE_APP_URL}` : (import.meta.env.VITE_APP_URL || window.location.origin);
+      const res = await fetch(`${base}/api/generate-dream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          dreamText: dreamText.trim(),
+          artistId: selectedArtist.id,
+          language: profile?.language || 'tr',
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 402) {
+          setPaywallView('credits');
+          setShowPaywall(true);
+        }
+        throw new Error(data.error || 'Failed');
+      }
+      setGeneratedImage(data.imageUrl);
+      setInterpretation(data.interpretation);
+      setLoadingState(LoadingState.COMPLETE);
+      await refreshProfile();
+      setDreams(prev => [{
+        id: data.id,
+        date: data.createdAt,
+        prompt: dreamText.trim(),
+        imageUrl: data.imageUrl,
+        interpretation: data.interpretation,
+        artistName: data.artistName,
+      }, ...prev]);
+      setShowSuccessView(true);
+    } catch (e) {
+      console.error(e);
+      setLoadingState(LoadingState.ERROR);
+      setGenerateError(e instanceof Error ? e.message : t('errorGeneric'));
+    }
+  };
+
+  const handlePurchase = (planId: string) => {
+    const checkoutUrl = import.meta.env.VITE_PADDLE_CHECKOUT_URL;
+    if (checkoutUrl) {
+      const url = new URL(checkoutUrl);
+      url.searchParams.set('user_id', user?.id || '');
+      url.searchParams.set('product', planId);
+      window.open(url.toString());
+    }
+    setShowPaywall(false);
+  };
+
+  const updateLanguage = async (lang: Language) => {
+    if (isDemoMode && profile) {
+      setProfile({ ...profile, language: lang });
+      return;
+    }
+    if (!user?.id || !supabase) return;
+    try {
+      await supabase.from('profiles').update({ language: lang, updated_at: new Date().toISOString() }).eq('id', user.id);
+      await refreshProfile();
+    } catch {
+      // ignore when backend not ready
+    }
+  };
+
+  const getCreditPacks = () => [
+    { id: 'credits_10', title: t('credits10Title'), price: '₺29.99', features: [t('feat10Dreams'), t('featStandardSpeed')], recommended: false },
+  ];
+
+  // Gamification: artist counts, favorite, score, level
+  const artistCounts = dreams.reduce<Record<string, number>>((acc, d) => {
+    const name = d.artistName || '?';
+    acc[name] = (acc[name] || 0) + 1;
+    return acc;
+  }, {});
+  const favoriteArtistName = Object.keys(artistCounts).length
+    ? Object.entries(artistCounts).sort((a, b) => b[1] - a[1])[0][0]
+    : null;
+  const favoriteCount = favoriteArtistName ? artistCounts[favoriteArtistName] : 0;
+  const favoriteArtistImage = favoriteArtistName ? artists.find(a => a.name === favoriteArtistName)?.imageUrl : null;
+  const dreamScore = dreams.length * 10 + (Object.keys(artistCounts).length * 5);
+  const getLevel = (count: number) => {
+    if (count >= 25) return t('levelLegend');
+    if (count >= 10) return t('levelMaster');
+    if (count >= 3) return t('levelExplorer');
+    return t('levelNew');
+  };
+
+  const PaywallModal = () => (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto">
+      <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowPaywall(false)} aria-hidden />
+      <div className="relative w-full max-w-md bg-gradient-to-b from-indigo-950 to-[#0B0D17] border border-gold-500/20 rounded-2xl overflow-hidden shadow-2xl animate-slide-up">
+        <button onClick={() => setShowPaywall(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-gold-400 rounded-full p-1" aria-label="Kapat"><X className="w-6 h-6" /></button>
+        <div className="p-6 text-center">
+          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-gold-300 to-amber-600 rounded-full flex items-center justify-center mb-4"><Crown className="w-8 h-8 text-black" /></div>
+          <h2 className="text-2xl font-serif font-bold text-white">{t('paywallCreditsTitle')}</h2>
+          <p className="text-sm text-gray-400 mt-2">{t('paywallCreditsDesc')}</p>
+        </div>
+        <div className="px-6 pb-6 space-y-4">
+          {getCreditPacks().map((pack) => (
+            <div key={pack.id} onClick={() => handlePurchase(pack.id)} className="relative p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all cursor-pointer flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-white">{pack.title}</h3>
+                <div className="text-xs text-gray-400 mt-1 flex gap-2">{pack.features.map((f, i) => <span key={i}>• {f}</span>)}</div>
+              </div>
+              <span className="text-lg font-serif font-bold text-gold-300">{pack.price}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const SuccessView = () => (
+    <div className="fixed inset-0 z-[100] bg-[#0B0D17] flex flex-col animate-fade-in">
+      <div className="relative w-full h-[55vh] flex-shrink-0">
+        <img src={generatedImage!} alt="Generated Dream" className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-[#0B0D17]" />
+        <div className="absolute top-8 px-4 w-full flex justify-between items-start">
+          <div className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-2">
+            <CheckCircle2 className="w-3 h-3 text-green-400" />
+            <span className="text-xs font-bold text-white">{t('savedToGallery')}</span>
+          </div>
+          <button onClick={() => setShowSuccessView(false)} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-gold-400" aria-label="Kapat"><X className="w-6 h-6" /></button>
+        </div>
+        <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+          <span className="text-xs font-bold text-gold-300 uppercase">{selectedArtist?.name} {t('style')}</span>
+        </div>
+      </div>
+      <div className="flex-1 px-6 -mt-6 z-10 flex flex-col overflow-y-auto pb-24">
+        <h2 className="text-2xl font-serif font-bold text-white mb-4 flex items-center gap-2"><Stars className="w-6 h-6 text-gold-400" />{t('dreamMeaningTitle')}</h2>
+        <p className="text-gray-300 leading-relaxed text-lg mb-6">{interpretation}</p>
+        <div className="space-y-3">
+          <button onClick={() => { setShowSuccessView(false); setDreamText(''); }} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 font-bold text-white flex items-center justify-center gap-2">
+            <Sparkles className="w-5 h-5" />{t('newDreamButton')}
+          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 flex items-center justify-center gap-2"><Share2 className="w-4 h-4" />{t('share')}</button>
+            <button onClick={() => { setShowSuccessView(false); setActiveTab('gallery'); }} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 flex items-center justify-center gap-2"><LayoutGrid className="w-4 h-4" />{t('goToGallery')}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const HomeView = () => (
+    <>
+      <header className="pt-8 pb-6 px-6 flex items-center justify-between md:hidden">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg"><Moon className="w-6 h-6 text-white fill-current" /></div>
+          <div>
+            <h1 className="text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200">{t('appName')}</h1>
+            {isDemoMode && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300">Demo</span>}
+          </div>
+        </div>
+        <button onClick={() => setShowPaywall(true)} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full border border-white/5">
+          <Zap className={`w-3.5 h-3.5 ${tier === 'PRO' ? 'text-gold-400 fill-gold-400' : 'text-gray-400'}`} />
+          <span className="text-xs font-bold font-mono text-gray-200">{tier === 'PRO' ? t('generateButtonPro') : credits}</span>
+        </button>
+      </header>
+      <main className="flex-1 px-4 sm:px-6 flex flex-col gap-8 pb-24 md:pb-6 overflow-y-auto overflow-x-hidden max-w-3xl mx-auto w-full pt-4 sm:pt-6 md:pt-12">
+        <section className="space-y-3">
+          <label className="text-sm font-medium text-purple-200/70 uppercase tracking-widest flex items-center gap-2"><Sparkles className="w-3 h-3" />{t('dreamInputLabel')}</label>
+          <div className="relative">
+          <textarea value={dreamText} onChange={(e) => setDreamText(e.target.value)} placeholder={t('dreamInputPlaceholder')} maxLength={2000} className="w-full min-h-[10rem] h-40 bg-white/5 border border-white/10 rounded-2xl p-4 text-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-500/30 resize-none transition-colors" />
+          <span className="absolute bottom-3 right-4 text-xs text-gray-500 font-mono">{dreamText.length}/2000</span>
+        </div>
+        </section>
+        <section className="space-y-3">
+          <label className="text-sm font-medium text-purple-200/70 uppercase tracking-widest">{t('artistSelectLabel')}</label>
+          <div className="flex overflow-x-auto gap-4 py-4 no-scrollbar snap-x -mx-6 px-6">
+            {artistsLoading ? (
+              [...Array(5)].map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-24 flex flex-col items-center gap-3 animate-pulse">
+                  <div className="w-20 h-20 rounded-full bg-white/10" />
+                  <div className="h-3 w-12 rounded bg-white/10" />
+                </div>
+              ))
+            ) : (
+              artists.map((artist) => {
+                const isSelected = selectedArtist?.id === artist.id;
+                return (
+                  <button key={artist.id} onClick={() => setSelectedArtist(artist)} className={`relative flex-shrink-0 w-24 flex flex-col items-center gap-3 snap-center transition-transform duration-300 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:ring-offset-2 focus:ring-offset-[#0B0D17] rounded-2xl ${isSelected ? 'scale-110 opacity-100' : 'opacity-60 scale-95 hover:opacity-80 hover:scale-100'}`}>
+                    <div className={`w-20 h-20 rounded-full p-1 transition-all duration-300 ${isSelected ? 'bg-gradient-to-br from-gold-300 to-amber-600 shadow-[0_0_20px_rgba(250,204,21,0.35)]' : 'border border-white/20'}`}>
+                      <img src={artist.imageUrl} alt={artist.name} className="w-full h-full rounded-full object-cover" loading="lazy" />
+                    </div>
+                    <span className={`text-xs font-bold text-center transition-colors ${isSelected ? 'text-gold-300' : 'text-gray-400'}`}>{artist.name.split(' ')[1] || artist.name}</span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </section>
+        {generateError && (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-200 animate-fade-in">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p className="text-sm flex-1">{generateError}</p>
+            <button onClick={() => { setGenerateError(null); setLoadingState(LoadingState.IDLE); handleGenerate(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-400">
+              <RefreshCw className="w-4 h-4" /> {language === 'tr' ? 'Tekrar dene' : 'Retry'}
+            </button>
+          </div>
+        )}
+        <section>
+          <button onClick={handleGenerate} disabled={loadingState !== LoadingState.IDLE && loadingState !== LoadingState.COMPLETE && loadingState !== LoadingState.ERROR} className={`w-full py-4 sm:py-5 rounded-xl font-serif font-bold text-base sm:text-lg tracking-wide transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:ring-offset-2 focus:ring-offset-[#0B0D17] min-h-[48px] touch-manipulation ${(loadingState === LoadingState.GENERATING_IMAGE || loadingState === LoadingState.INTERPRETING) ? 'bg-gray-800 cursor-not-allowed text-gray-400' : 'bg-gradient-to-r from-amber-200 via-gold-400 to-amber-600 text-slate-900 hover:shadow-[0_0_30px_rgba(250,204,21,0.4)] hover:scale-[1.01] active:scale-[0.99]'}`}>
+            <div className="flex items-center justify-center gap-2">
+              {(loadingState === LoadingState.IDLE || loadingState === LoadingState.COMPLETE || loadingState === LoadingState.ERROR) ? (
+                tier === 'FREE' && credits <= 0 ? <span>{t('creditLoadOrUpgrade')}</span> : <><Stars className="w-5 h-5" /><span>{t('generateButton')} ({tier === 'PRO' ? t('generateButtonPro') : t('generateButtonFree')})</span></>
+              ) : (
+                <><span className="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-900" /><span>{loadingState === LoadingState.GENERATING_IMAGE ? t('loadingImage') : t('loadingInterpret')}</span></>
+              )}
+            </div>
+          </button>
+        </section>
+        <section className="p-4 rounded-xl bg-white/5 border border-white/5 text-center">
+          <p className="text-xs text-gray-400 italic">{t('tip')}</p>
+        </section>
+      </main>
+    </>
+  );
+
+  const GalleryView = () => (
+    <>
+      <header className="pt-8 pb-6 px-6 flex items-center justify-between">
+        <h1 className="text-3xl font-serif font-bold text-white">{t('galleryTitle')}</h1>
+        <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-400">{dreams.length} {t('works')}</div>
+      </header>
+      <main className="flex-1 px-4 pb-24 overflow-y-auto">
+        {dreams.length === 0 ? (
+          <div className="flex flex-col items-center justify-center text-gray-500 py-20">
+            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4"><LayoutGrid className="w-8 h-8 opacity-30" /></div>
+            <p className="text-center whitespace-pre-wrap">{t('galleryEmpty')}</p>
+            <button onClick={() => setActiveTab('home')} className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm font-bold text-white">{t('createNow')}</button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {dreams.map((dream) => (
+              <div key={dream.id} onClick={() => setSelectedDreamStart(dream)} className="relative aspect-[4/5] rounded-xl overflow-hidden bg-white/5 border border-white/10 group cursor-pointer transition-transform duration-300 hover:border-gold-500/30">
+                <img src={dream.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
+                <div className="absolute bottom-3 left-3 right-3">
+                  <p className="text-xs text-gold-300 font-bold truncate">{dream.artistName}</p>
+                  <p className="text-[10px] text-gray-400 flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(dream.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+    </>
+  );
+
+  const ProfileView = () => (
+    <>
+      <header className="pt-8 pb-6 px-6 flex items-center justify-between">
+        <h1 className="text-3xl font-serif font-bold text-white">{t('profileTitle')}</h1>
+        <button onClick={signOut} className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white" title="Çıkış"><LogOut className="w-5 h-5" /></button>
+      </header>
+      <main className="flex-1 px-6 flex flex-col gap-6 pb-24 overflow-y-auto max-w-3xl mx-auto w-full pt-6">
+        {/* User card + plan */}
+        <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500 to-blue-600 flex items-center justify-center text-xl font-bold text-white overflow-hidden uppercase">
+            {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" /> : (profile?.full_name?.[0] || user?.email?.[0] || '?')}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold text-white truncate">{profile?.full_name || t('userTitle')}</h2>
+            <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold mt-1 ${tier === 'PRO' ? 'bg-gold-500/20 text-gold-400 border border-gold-500/30' : 'bg-gray-700 text-gray-300'}`}>
+              {tier === 'PRO' && <Crown className="w-3 h-3 fill-current" />}{tier === 'PRO' ? t('proPlan') : t('freePlan')}
+            </div>
+          </div>
+        </div>
+
+        {/* Stats: credits + total dreams */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+            <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider"><Zap className="w-3 h-3" />{t('creditsRemaining')}</div>
+            <div className="text-2xl font-serif font-bold text-white">{tier === 'PRO' ? '∞' : credits}</div>
+            {tier === 'FREE' && <button onClick={() => setShowPaywall(true)} className="text-xs text-gold-400 hover:text-gold-300 font-bold mt-1 text-left">{t('loadCredits')}</button>}
+          </div>
+          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+            <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider"><History className="w-3 h-3" />{t('dreamsGenerated')}</div>
+            <div className="text-2xl font-serif font-bold text-white">{dreams.length}</div>
+            <span className="text-xs text-gray-500 mt-1">{t('totalDreams')}</span>
+          </div>
+        </div>
+
+        {/* Gamification: Rüya Skoru + Seviye */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-600/10 border border-amber-500/20">
+            <div className="flex items-center gap-2 text-amber-200/80 text-xs uppercase tracking-wider"><Award className="w-3 h-3" />{t('dreamScore')}</div>
+            <div className="text-2xl font-serif font-bold text-amber-200 mt-0.5">{dreamScore}</div>
+            <span className="text-xs text-amber-200/60 mt-1">{t('dreamScoreHint')}</span>
+          </div>
+          <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-600/10 border border-purple-500/20">
+            <div className="flex items-center gap-2 text-purple-200/80 text-xs uppercase tracking-wider"><Stars className="w-3 h-3" />{t('level')}</div>
+            <div className="text-lg font-serif font-bold text-purple-200 mt-0.5 truncate">{getLevel(dreams.length)}</div>
+            <span className="text-xs text-purple-200/60 mt-1">{dreams.length} {t('dreamsWith')}</span>
+          </div>
+        </div>
+
+        {/* Senin Ressamın */}
+        {favoriteArtistName && (
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+            <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider mb-3"><Palette className="w-4 h-4 text-gold-400" />{t('yourPainter')}</div>
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-gold-500/40 flex-shrink-0 bg-white/5">
+                {favoriteArtistImage ? <img src={favoriteArtistImage} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-gold-500/30 to-amber-600/30 flex items-center justify-center text-gold-300 font-bold text-lg">{favoriteArtistName[0]}</div>}
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-white text-lg truncate">{favoriteArtistName}</p>
+                <p className="text-sm text-gray-400">{t('yourPainterDesc')}</p>
+                <p className="text-xs text-gold-400 font-medium mt-0.5">{favoriteCount} {t('dreamsWith')}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tarzlara göre dağılım */}
+        {Object.keys(artistCounts).length > 0 && (
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+            <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider mb-3">{t('styleBreakdown')}</div>
+            <div className="space-y-2">
+              {Object.entries(artistCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([name, count]) => {
+                  const maxCount = Math.max(...Object.values(artistCounts));
+                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                  return (
+                    <div key={name} className="flex items-center gap-3">
+                      <span className="text-sm text-gray-300 w-24 truncate">{name}</span>
+                      <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div className="h-full rounded-full bg-gradient-to-r from-gold-500/60 to-amber-500/60 transition-all duration-500" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs font-mono text-gray-400 w-6 text-right">{count}</span>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* Legal links (mobile: no sidebar) */}
+        <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+          <div className="flex items-center gap-2 mb-3 text-gray-400 text-xs uppercase tracking-wider">Yasal</div>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/terms" className="text-sm text-gray-400 hover:text-white">{LEGAL_LINK_LABELS[language].terms}</Link>
+            <Link to="/privacy" className="text-sm text-gray-400 hover:text-white">{LEGAL_LINK_LABELS[language].privacy}</Link>
+            <Link to="/refund-policy" className="text-sm text-gray-400 hover:text-white">{LEGAL_LINK_LABELS[language].refund_policy}</Link>
+          </div>
+        </div>
+
+        {/* Language dropdown */}
+        <div className="p-4 rounded-xl bg-white/5 border border-white/5 relative">
+          <div className="flex items-center gap-2 mb-3 text-gray-200 font-medium"><Globe className="w-5 h-5 text-purple-400" />{t('language')}</div>
+          <button
+            type="button"
+            onClick={() => setLanguageDropdownOpen((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 py-3 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-gold-400/50"
+            aria-expanded={languageDropdownOpen}
+            aria-haspopup="listbox"
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-xl leading-none">{currentLangOption.flag}</span>
+              <span className="font-medium text-white">{currentLangOption.label}</span>
+            </span>
+            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${languageDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {languageDropdownOpen && (
+            <>
+              <div className="absolute inset-0 z-0" aria-hidden onClick={() => setLanguageDropdownOpen(false)} />
+              <ul className="absolute left-4 right-4 mt-1 py-1 rounded-xl bg-[#1a1c2e] border border-white/10 shadow-xl z-10" role="listbox">
+                {LANGUAGE_OPTIONS.map((opt) => (
+                  <li key={opt.code} role="option" aria-selected={language === opt.code}>
+                    <button
+                      type="button"
+                      onClick={() => { updateLanguage(opt.code); setLanguageDropdownOpen(false); }}
+                      className={`w-full flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors ${language === opt.code ? 'bg-gold-500/20 text-gold-300' : 'text-gray-300 hover:bg-white/10'}`}
+                    >
+                      <span className="text-lg leading-none">{opt.flag}</span>
+                      {opt.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      </main>
+    </>
+  );
+
+  const DreamDetailModal = ({ dream, onClose }: { dream: DreamRecord; onClose: () => void }) => (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-fade-in overflow-y-auto">
+      <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} aria-hidden />
+      <div className="relative w-full sm:max-w-4xl max-h-[95vh] sm:max-h-[80vh] h-[90vh] sm:h-[80vh] bg-gradient-to-b from-[#1a1c2e] to-[#0B0D17] sm:rounded-2xl overflow-hidden flex flex-col sm:flex-row shadow-2xl animate-slide-up">
+        <button onClick={onClose} className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 w-10 h-10 min-h-[44px] min-w-[44px] rounded-full bg-black/40 flex items-center justify-center text-white hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-gold-400 touch-manipulation" aria-label="Kapat"><X className="w-6 h-6" /></button>
+        <div className="relative w-full sm:w-1/2 aspect-[4/5] sm:aspect-auto flex-shrink-0 bg-black">
+          <img src={dream.imageUrl} alt="" className="w-full h-full object-cover" />
+          <div className="absolute bottom-4 left-4"><p className="text-xs font-bold text-gold-300 uppercase">{dream.artistName} {t('style')}</p></div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col">
+          <h3 className="font-serif text-xl text-gold-300 mb-4 flex items-center gap-2"><Stars className="w-5 h-5 text-purple-400" />{t('dreamMeaningTitle')}</h3>
+          <p className="text-gray-300 leading-relaxed text-sm mb-4">{dream.interpretation}</p>
+          {dream.prompt && <div className="mt-4 pt-4 border-t border-white/5"><h4 className="text-xs text-gray-500 uppercase mb-2">{t('dreamNote')}</h4><p className="text-xs text-gray-400 italic">"{dream.prompt}"</p></div>}
+          <div className="mt-6 flex gap-3"><button className="flex-1 py-3 bg-white/10 rounded-lg text-sm font-bold text-white border border-white/10">{t('share')}</button><button className="flex-1 py-3 bg-white/5 rounded-lg text-sm font-bold text-gray-400">{t('download')}</button></div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const Sidebar = () => (
+    <div className="hidden md:flex flex-col w-64 flex-shrink-0 border-r border-white/10 bg-[#0B0D17]/50 p-4 gap-2 h-screen sticky top-0">
+      <div className="flex items-center gap-2 px-4 py-4 mb-4">
+        <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg"><Moon className="w-6 h-6 text-white fill-current" /></div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200 truncate">DreamInk</h1>
+          {isDemoMode && (
+            <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded">Demo</span>
+          )}
+        </div>
+      </div>
+      <button onClick={() => setActiveTab('home')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'home' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><Home className="w-5 h-5" />{t('tabHome')}</button>
+      <button onClick={() => setActiveTab('gallery')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'gallery' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><LayoutGrid className="w-5 h-5" />{t('tabGallery')}</button>
+      <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'profile' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><User className="w-5 h-5" />{t('tabProfile')}</button>
+      <div className="mt-auto pt-4 border-t border-white/5 space-y-1">
+        <div className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-gray-500">Yasal</div>
+        <Link to="/terms" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].terms}</Link>
+        <Link to="/privacy" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].privacy}</Link>
+        <Link to="/cookie-policy" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].cookie_policy}</Link>
+        <Link to="/refund-policy" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].refund_policy}</Link>
+        <button onClick={() => setShowPaywall(true)} className="w-full mt-3 flex items-center justify-between bg-gradient-to-r from-purple-900/40 to-blue-900/40 px-4 py-3 rounded-xl border border-white/5">
+          <div className="flex items-center gap-2"><Zap className={`w-4 h-4 ${tier === 'PRO' ? 'text-gold-400' : 'text-gray-400'}`} /><span className="text-sm font-bold text-gray-200">{tier === 'PRO' ? t('proPlan') : `${credits} Credits`}</span></div>
+          {tier !== 'PRO' && <span className="text-xs text-gold-400 font-bold">{t('loadCredits')}</span>}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950 via-[#0B0D17] to-black text-gray-100 overflow-x-hidden">
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-900/20 rounded-full blur-[100px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-80 h-80 bg-blue-900/20 rounded-full blur-[100px]" />
+      </div>
+      <div className="relative z-10 w-full max-w-7xl mx-auto min-h-screen flex flex-col md:flex-row">
+        {!showSuccessView && <Sidebar />}
+        <div className="flex-1 flex flex-col min-w-0">
+          {showSuccessView && <SuccessView />}
+          {activeTab === 'home' && !showSuccessView && <HomeView />}
+          {activeTab === 'gallery' && !showSuccessView && <GalleryView />}
+          {activeTab === 'profile' && !showSuccessView && <ProfileView />}
+        </div>
+        {!showSuccessView && (
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 w-full bg-[#0B0D17]/90 backdrop-blur-lg border-t border-white/10 pb-safe">
+            <div className="flex justify-around items-center h-14 min-h-[56px]">
+              <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-0.5 w-full h-full justify-center min-h-[44px] touch-manipulation ${activeTab === 'home' ? 'text-gold-400' : 'text-gray-500'}`}><Home className="w-6 h-6" /><span className="text-[10px] font-bold">{t('tabHome')}</span></button>
+              <button onClick={() => setActiveTab('gallery')} className={`flex flex-col items-center gap-0.5 w-full h-full justify-center min-h-[44px] touch-manipulation ${activeTab === 'gallery' ? 'text-gold-400' : 'text-gray-500'}`}><LayoutGrid className="w-6 h-6" /><span className="text-[10px] font-bold">{t('tabGallery')}</span></button>
+              <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-0.5 w-full h-full justify-center min-h-[44px] touch-manipulation ${activeTab === 'profile' ? 'text-gold-400' : 'text-gray-500'}`}><User className="w-6 h-6" /><span className="text-[10px] font-bold">{t('tabProfile')}</span></button>
+            </div>
+          </div>
+        )}
+        {selectedDreamStart && <DreamDetailModal dream={selectedDreamStart} onClose={() => setSelectedDreamStart(null)} />}
+        {showPaywall && <PaywallModal />}
+      </div>
+    </div>
+  );
+}
