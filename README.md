@@ -87,13 +87,13 @@ npm run preview
 1. Repo’yu Vercel’e bağla.
 2. **Environment Variables**’a yukarıdaki tüm değişkenleri ekle (`VITE_*` ve `SUPABASE_*`, `REPLICATE_*`, `PADDLE_*`).
 3. **Supabase → Authentication → URL Configuration**’da Site URL ve Redirect URLs’e `https://dreemart-v1.vercel.app` (ve varsa özel domain) ekle.
-4. Deploy et.
+4. Deploy et. Replicate testi için **REPLICATE_TEST.md** dosyasına bak.
 
 ## Proje yapısı
 
 - `App.tsx` — Router, login, korumalı/admin route’lar
 - `MainApp.tsx` — Ana uygulama (rüya girişi, galeri, profil)
-- `admin/` — Admin paneli (dashboard, kullanıcılar, ressamlar, promptlar)
+- `admin/` — Admin paneli (gizli URL: varsayılan `/yönetim`; `VITE_ADMIN_PATH` ile değiştirilebilir)
 - `api/` — Vercel serverless: `generate-dream`, `paddle-webhook`
 - `context/AuthContext.tsx` — Auth state, Google sign-in
 - `lib/supabase.ts` — Supabase client

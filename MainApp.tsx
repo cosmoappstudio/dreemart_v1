@@ -6,7 +6,8 @@ import { MOCK_DREAMS, getMockInterpretation } from './lib/mockData';
 import { Artist, LoadingState, DreamRecord, Language } from './types';
 import { TRANSLATIONS } from './translations';
 import { Link } from 'react-router-dom';
-import { Sparkles, Moon, Share2, X, Stars, User, Home, Crown, CheckCircle2, Zap, History, LayoutGrid, Calendar, Globe, LogOut, AlertCircle, RefreshCw, Palette, Award, ChevronDown } from 'lucide-react';
+import { ADMIN_PATH } from './lib/adminPath';
+import { Sparkles, Moon, Share2, X, Stars, User, Home, Crown, CheckCircle2, Zap, History, LayoutGrid, Calendar, Globe, LogOut, AlertCircle, RefreshCw, Palette, Award, ChevronDown, Settings } from 'lucide-react';
 import { LEGAL_LINK_LABELS } from './landingTranslations';
 
 const LANGUAGE_OPTIONS: { code: Language; flag: string; label: string }[] = [
@@ -36,6 +37,32 @@ function mapDbDream(row: { id: string; created_at: string; prompt: string; image
   };
 }
 
+/** Dışarıda tanımlı; her tuşta MainApp re-render olsa bile textarea yeniden mount olmaz, focus kaybolmaz. */
+function DreamTextarea({
+  value,
+  onChange,
+  placeholder,
+  maxLength,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  maxLength: number;
+}) {
+  return (
+    <div className="relative">
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        className="w-full min-h-[10rem] h-40 bg-white/5 border border-white/10 rounded-2xl p-4 text-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-500/30 resize-none transition-colors"
+      />
+      <span className="absolute bottom-3 right-4 text-xs text-gray-500 font-mono">{value.length}/{maxLength}</span>
+    </div>
+  );
+}
+
 export default function MainApp() {
   const { user, profile, signOut, refreshProfile, isDemoMode, setProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<'home' | 'gallery' | 'profile'>('home');
@@ -53,6 +80,7 @@ export default function MainApp() {
   const [showSuccessView, setShowSuccessView] = useState(false);
   const [selectedDreamStart, setSelectedDreamStart] = useState<DreamRecord | null>(null);
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
+  const [creditPacksFromDb, setCreditPacksFromDb] = useState<{ id: string; name: string; price: string; credits_text: string; badge: string | null }[]>([]);
 
   const language = (profile?.language || 'tr') as Language;
   const currentLangOption = LANGUAGE_OPTIONS.find((o) => o.code === language) ?? LANGUAGE_OPTIONS[0];
@@ -82,6 +110,22 @@ export default function MainApp() {
       setDreams((data || []).map((r: { artists: { name: string } | null }) => mapDbDream({ ...r, artists: r.artists })));
     });
   }, [user?.id, isDemoMode]);
+
+  // Canlıda kredilerin güncel gelmesi için mount'ta ve periyodik profil yenileme
+  useEffect(() => {
+    if (!user?.id || user.id === 'demo-user' || isDemoMode) return;
+    refreshProfile();
+    const t = setInterval(refreshProfile, 60 * 1000);
+    return () => clearInterval(t);
+  }, [user?.id, isDemoMode]);
+
+  // Kredi paketleri: Admin/landing ile aynı kaynak (pricing_packs)
+  useEffect(() => {
+    if (!supabase || isDemoMode) return;
+    supabase.from('pricing_packs').select('id, name, price, credits_text, badge, sort_order').order('sort_order').then(({ data }) => {
+      if (data?.length) setCreditPacksFromDb(data as { id: string; name: string; price: string; credits_text: string; badge: string | null }[]);
+    });
+  }, [isDemoMode]);
 
   const handleGenerate = async () => {
     if (!dreamText.trim() || !selectedArtist || !user) return;
@@ -184,10 +228,21 @@ export default function MainApp() {
     }
   };
 
-  const getCreditPacks = () => [
-    { id: 'credits_10', title: t('credits10Title'), price: '₺29.99', features: [t('feat10Dreams'), t('featStandardSpeed')], recommended: false },
-    { id: 'credits_50', title: t('credits50Title'), price: '₺99', features: [t('feat50Dreams'), t('featStandardSpeed')], recommended: true },
-  ];
+  const getCreditPacks = () => {
+    if (creditPacksFromDb.length > 0) {
+      return creditPacksFromDb.map((p) => ({
+        id: p.id,
+        title: p.name,
+        price: p.price,
+        features: [p.credits_text, t('featStandardSpeed')],
+        recommended: !!p.badge,
+      }));
+    }
+    return [
+      { id: 'credits_10', title: t('credits10Title'), price: '₺29.99', features: [t('feat10Dreams'), t('featStandardSpeed')], recommended: false },
+      { id: 'credits_50', title: t('credits50Title'), price: '₺99', features: [t('feat50Dreams'), t('featStandardSpeed')], recommended: true },
+    ];
+  };
 
   // Gamification: artist counts, favorite, score, level
   const artistCounts = dreams.reduce<Record<string, number>>((acc, d) => {
@@ -284,10 +339,7 @@ export default function MainApp() {
       <main className="flex-1 px-4 sm:px-6 flex flex-col gap-8 pb-24 md:pb-6 overflow-y-auto overflow-x-hidden max-w-3xl mx-auto w-full pt-4 sm:pt-6 md:pt-12">
         <section className="space-y-3">
           <label className="text-sm font-medium text-purple-200/70 uppercase tracking-widest flex items-center gap-2"><Sparkles className="w-3 h-3" />{t('dreamInputLabel')}</label>
-          <div className="relative">
-          <textarea value={dreamText} onChange={(e) => setDreamText(e.target.value)} placeholder={t('dreamInputPlaceholder')} maxLength={2000} className="w-full min-h-[10rem] h-40 bg-white/5 border border-white/10 rounded-2xl p-4 text-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-500/30 resize-none transition-colors" />
-          <span className="absolute bottom-3 right-4 text-xs text-gray-500 font-mono">{dreamText.length}/2000</span>
-        </div>
+          <DreamTextarea value={dreamText} onChange={setDreamText} placeholder={t('dreamInputPlaceholder')} maxLength={2000} />
         </section>
         <section className="space-y-3">
           <label className="text-sm font-medium text-purple-200/70 uppercase tracking-widest">{t('artistSelectLabel')}</label>
@@ -537,15 +589,22 @@ export default function MainApp() {
 
   const Sidebar = () => (
     <div className="hidden md:flex flex-col w-64 flex-shrink-0 border-r border-white/10 bg-[#0B0D17]/50 p-4 gap-2 h-screen sticky top-0">
-      <div className="flex items-center gap-2 px-4 py-4 mb-4">
+      <Link to="/" className="flex items-center gap-2 px-4 py-4 mb-4 rounded-xl hover:bg-white/5 transition-colors">
         <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg"><Moon className="w-6 h-6 text-white fill-current" /></div>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200 truncate">DreamInk</h1>
+          <span className="text-[10px] text-gray-500">Ana sayfaya dön</span>
           {isDemoMode && (
             <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded">Demo</span>
           )}
         </div>
-      </div>
+      </Link>
+      {profile?.role === 'admin' && (
+        <Link to={`/${ADMIN_PATH}`} className="flex items-center gap-3 px-4 py-3 rounded-xl text-left text-gray-400 hover:bg-white/5 hover:text-white transition-colors">
+          <Settings className="w-5 h-5" />
+          <span className="text-sm font-medium">Yönetim Paneli</span>
+        </Link>
+      )}
       <button onClick={() => setActiveTab('home')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'home' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><Home className="w-5 h-5" />{t('tabHome')}</button>
       <button onClick={() => setActiveTab('gallery')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'gallery' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><LayoutGrid className="w-5 h-5" />{t('tabGallery')}</button>
       <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'profile' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><User className="w-5 h-5" />{t('tabProfile')}</button>

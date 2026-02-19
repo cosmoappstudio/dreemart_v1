@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, Palette, FileText, Cpu, Key, Scale, LogOut, Menu, X, Moon, ImageIcon, CreditCard, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { adminRoute, ADMIN_PATH } from '../lib/adminPath';
 import AdminDashboard from './AdminDashboard';
 import AdminUsers from './AdminUsers';
 import AdminArtists from './AdminArtists';
@@ -13,22 +14,23 @@ import AdminLanding from './AdminLanding';
 import AdminPricing from './AdminPricing';
 import AdminSite from './AdminSite';
 
-const ROUTES: { path: string; label: string; icon: typeof LayoutDashboard }[] = [
-  { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/admin/users', label: 'Kullanıcılar', icon: Users },
-  { path: '/admin/artists', label: 'Ressamlar', icon: Palette },
-  { path: '/admin/landing', label: 'Örnek Rüyalar', icon: ImageIcon },
-  { path: '/admin/pricing', label: 'Kredi Paketleri', icon: CreditCard },
-  { path: '/admin/prompts', label: 'Promptlar', icon: FileText },
-  { path: '/admin/replicate', label: 'Replicate', icon: Cpu },
-  { path: '/admin/keys', label: 'API & Anahtarlar', icon: Key },
-  { path: '/admin/legal', label: 'Yasal Sayfalar', icon: Scale },
-  { path: '/admin/site', label: 'Site Ayarları', icon: Settings },
+const ROUTE_KEYS: { key: string; label: string; icon: typeof LayoutDashboard }[] = [
+  { key: '', label: 'Dashboard', icon: LayoutDashboard },
+  { key: '/users', label: 'Kullanıcılar', icon: Users },
+  { key: '/artists', label: 'Ressamlar', icon: Palette },
+  { key: '/landing', label: 'Örnek Rüyalar', icon: ImageIcon },
+  { key: '/pricing', label: 'Kredi Paketleri', icon: CreditCard },
+  { key: '/prompts', label: 'Promptlar', icon: FileText },
+  { key: '/replicate', label: 'Replicate', icon: Cpu },
+  { key: '/keys', label: 'API & Anahtarlar', icon: Key },
+  { key: '/legal', label: 'Yasal Sayfalar', icon: Scale },
+  { key: '/site', label: 'Site Ayarları', icon: Settings },
 ];
 
 function Breadcrumb() {
   const loc = useLocation();
-  const current = ROUTES.find((r) => loc.pathname === r.path || (r.path !== '/admin' && loc.pathname.startsWith(r.path))) ?? ROUTES[0];
+  const base = `/${ADMIN_PATH}`;
+  const current = ROUTE_KEYS.find((r) => r.key === '' ? loc.pathname === base : loc.pathname.startsWith(`${base}${r.key}`)) ?? ROUTE_KEYS[0];
   return (
     <nav className="flex items-center gap-2 text-sm text-gray-400 mb-6">
       <span>Admin</span>
@@ -74,22 +76,25 @@ export default function AdminApp() {
         </div>
         <div className="px-2 py-3 text-xs text-gray-500 uppercase tracking-wider">Admin Panel</div>
         <nav className="flex-1 flex flex-col gap-0.5 px-2">
-          {ROUTES.map(({ path, label, icon: Icon }) => (
-            <NavLink
-              key={path}
-              to={path}
-              end={path === '/admin'}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`
-              }
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-            </NavLink>
-          ))}
+          {ROUTE_KEYS.map(({ key, label, icon: Icon }) => {
+            const path = adminRoute(key ? `/admin${key}` : '/admin');
+            return (
+              <NavLink
+                key={path}
+                to={path}
+                end={key === ''}
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  }`
+                }
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                {label}
+              </NavLink>
+            );
+          })}
         </nav>
         <div className="p-3 border-t border-gray-800">
           <div className="px-3 py-2 text-xs text-gray-500 truncate" title={profile?.email ?? ''}>

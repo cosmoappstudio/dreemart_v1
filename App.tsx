@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { supabase } from './lib/supabase';
+import { ADMIN_PATH } from './lib/adminPath';
 import MainApp from './MainApp';
 import AdminApp from './admin/AdminApp';
 import LandingPage from './LandingPage';
@@ -21,7 +22,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function LandingOrApp() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0B0D17] flex items-center justify-center">
@@ -29,7 +30,6 @@ function LandingOrApp() {
       </div>
     );
   }
-  if (user) return <Navigate to="/app" replace />;
   return <LandingPage />;
 }
 
@@ -146,7 +146,7 @@ export default function App() {
           <Route path="/privacy" element={<LegalPage />} />
           <Route path="/refund-policy" element={<LegalPage />} />
           <Route path="/cookie-policy" element={<LegalPage />} />
-          <Route path="/admin/*" element={<AdminRoute><AdminApp /></AdminRoute>} />
+          <Route path={`/${ADMIN_PATH}/*`} element={<AdminRoute><AdminApp /></AdminRoute>} />
           <Route path="/app/*" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
           <Route path="/" element={<LandingOrApp />} />
         </Routes>

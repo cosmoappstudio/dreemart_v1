@@ -7,6 +7,7 @@ import {
 import { LANDING } from './landingTranslations';
 import type { Language } from './types';
 import { supabase } from './lib/supabase';
+import { useAuth } from './context/AuthContext';
 
 const LANG_OPTIONS: { code: Language; flag: string; label: string }[] = [
   { code: 'tr', flag: '🇹🇷', label: 'Türkçe' },
@@ -47,6 +48,7 @@ const FALLBACK_PACKS: PricingPack[] = [
 ];
 
 export default function LandingPage() {
+  const { user } = useAuth();
   const [lang, setLang] = useState<Language>('tr');
   const [langOpen, setLangOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -134,9 +136,15 @@ export default function LandingPage() {
               </>
             )}
           </div>
-          <button onClick={() => navigate('/login')} className="px-3 sm:px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white font-medium text-xs sm:text-sm hover:bg-white/15 min-h-[44px] touch-manipulation whitespace-nowrap">
-            {t.ctaLogin}
-          </button>
+          {user ? (
+            <button onClick={() => navigate('/app')} className="px-3 sm:px-4 py-2.5 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-200 font-medium text-xs sm:text-sm hover:bg-amber-500/30 min-h-[44px] touch-manipulation whitespace-nowrap">
+              Uygulamaya Git
+            </button>
+          ) : (
+            <button onClick={() => navigate('/login')} className="px-3 sm:px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white font-medium text-xs sm:text-sm hover:bg-white/15 min-h-[44px] touch-manipulation whitespace-nowrap">
+              {t.ctaLogin}
+            </button>
+          )}
         </div>
       </header>
 
