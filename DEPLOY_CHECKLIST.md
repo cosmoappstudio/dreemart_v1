@@ -46,7 +46,7 @@ UPDATE profiles SET role = 'admin' WHERE email = 'SENIN_GOOGLE_EMAIL@gmail.com';
 
 ## 6. (Opsiyonel) Paddle
 
-- Ürün/fiyat oluştur → Webhook URL: `https://dreemart-v1.vercel.app/api/paddle-webhook`
+- Lemon Squeezy: Webhook URL `https://dreemart.app/api/lemon-squeezy-webhook`; Paddle (opsiyonel): `https://dreemart.app/api/paddle-webhook`
 - Env: `PADDLE_WEBHOOK_SECRET`, `PADDLE_API_KEY`, `VITE_PADDLE_CHECKOUT_URL`
 
 ---

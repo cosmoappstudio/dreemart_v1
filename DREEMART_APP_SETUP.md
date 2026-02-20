@@ -125,7 +125,8 @@ Supabase Table Editor’dan `profiles` tablosunda kredi veya username güncelled
 
 **Paddle** → Checkout / Webhook ayarlarında:
 
-- Webhook URL: `https://dreemart.app/api/paddle-webhook`
+- Lemon Squeezy webhook URL: `https://dreemart.app/api/lemon-squeezy-webhook`
+- Paddle (eski) webhook URL: `https://dreemart.app/api/paddle-webhook`
 
 ---
 

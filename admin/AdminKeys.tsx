@@ -5,6 +5,7 @@ import { Key, CheckCircle, XCircle, Loader2, RefreshCw, Shield } from 'lucide-re
 interface KeysStatus {
   replicate: boolean;
   paddle: boolean;
+  lemonSqueezy: boolean;
   supabase: boolean;
 }
 
@@ -54,7 +55,8 @@ export default function AdminKeys() {
 
   const cards: { key: keyof KeysStatus; label: string; description: string }[] = [
     { key: 'replicate', label: 'Replicate', description: 'Görsel (Imagen-4) ve yorum (Claude) API' },
-    { key: 'paddle', label: 'Paddle', description: 'Ödeme ve webhook' },
+    { key: 'lemonSqueezy', label: 'Lemon Squeezy', description: 'Ödeme webhook (kredi satışları)' },
+    { key: 'paddle', label: 'Paddle', description: 'Ödeme (eski; Lemon Squeezy kullanılıyorsa opsiyonel)' },
     { key: 'supabase', label: 'Supabase', description: 'Veritabanı ve Auth (service role)' },
   ];
 

@@ -30,6 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   return res.status(200).json({
     replicate: !!(process.env.REPLICATE_API_TOKEN && process.env.REPLICATE_API_TOKEN.length > 10),
     paddle: !!(process.env.PADDLE_WEBHOOK_SECRET && process.env.PADDLE_API_KEY),
+    lemonSqueezy: !!(process.env.LEMON_SQUEEZY_WEBHOOK_SECRET),
     supabase: !!(process.env.VITE_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
   });
 }

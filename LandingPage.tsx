@@ -33,6 +33,7 @@ export interface PricingPack {
   credits_amount?: number;
   artist_styles_count?: number;
   paddle_product_id?: string | null;
+  lemon_squeezy_variant_id?: string | null;
   four_k: boolean;
   badge: string | null;
   sort_order: number;

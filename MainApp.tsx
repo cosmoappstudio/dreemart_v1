@@ -79,7 +79,7 @@ export default function MainApp() {
   const [showSuccessView, setShowSuccessView] = useState(false);
   const [selectedDreamStart, setSelectedDreamStart] = useState<DreamRecord | null>(null);
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
-  const [creditPacksFromDb, setCreditPacksFromDb] = useState<{ id: string; name: string; price: string; credits_text: string; badge: string | null }[]>([]);
+  const [creditPacksFromDb, setCreditPacksFromDb] = useState<{ id: string; name: string; price: string; credits_text: string; badge: string | null; lemon_squeezy_variant_id?: string | null }[]>([]);
 
   const language = (profile?.language || 'tr') as Language;
   const currentLangOption = LANGUAGE_OPTIONS.find((o) => o.code === language) ?? LANGUAGE_OPTIONS[0];
@@ -129,11 +129,11 @@ export default function MainApp() {
     if (activeTab === 'profile' && user?.id) refreshProfile();
   }, [activeTab]);
 
-  // Kredi paketleri: Admin/landing ile aynı kaynak (pricing_packs)
+  // Kredi paketleri: Admin/landing ile aynı kaynak (pricing_packs); Lemon Squeezy variant_id checkout için
   useEffect(() => {
     if (!supabase) return;
-    supabase.from('pricing_packs').select('id, name, price, credits_text, badge, sort_order').order('sort_order').then(({ data }) => {
-      if (data?.length) setCreditPacksFromDb(data as { id: string; name: string; price: string; credits_text: string; badge: string | null }[]);
+    supabase.from('pricing_packs').select('id, name, price, credits_text, badge, sort_order, lemon_squeezy_variant_id').order('sort_order').then(({ data }) => {
+      if (data?.length) setCreditPacksFromDb(data as { id: string; name: string; price: string; credits_text: string; badge: string | null; lemon_squeezy_variant_id?: string | null }[]);
     });
   }, []);
 
@@ -193,12 +193,21 @@ export default function MainApp() {
   };
 
   const handlePurchase = (planId: string) => {
-    const checkoutUrl = import.meta.env.VITE_PADDLE_CHECKOUT_URL;
-    if (checkoutUrl) {
-      const url = new URL(checkoutUrl);
-      url.searchParams.set('user_id', user?.id || '');
-      url.searchParams.set('product', planId);
-      window.open(url.toString());
+    const pack = creditPacksFromDb.find((p) => p.id === planId);
+    const storeUrl = import.meta.env.VITE_LEMONSQUEEZY_STORE_URL as string | undefined;
+    const variantId = pack && 'lemon_squeezy_variant_id' in pack ? pack.lemon_squeezy_variant_id : null;
+    if (storeUrl && variantId) {
+      const base = storeUrl.replace(/\/$/, '');
+      const url = `${base}/checkout/buy/${variantId}?checkout[custom][user_id]=${encodeURIComponent(user?.id || '')}`;
+      window.open(url);
+    } else {
+      const checkoutUrl = import.meta.env.VITE_PADDLE_CHECKOUT_URL;
+      if (checkoutUrl) {
+        const url = new URL(checkoutUrl);
+        url.searchParams.set('user_id', user?.id || '');
+        url.searchParams.set('product', planId);
+        window.open(url.toString());
+      }
     }
     setShowPaywall(false);
   };

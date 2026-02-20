@@ -61,7 +61,11 @@ SUPABASE_SERVICE_ROLE_KEY=<Supabase Dashboard → Settings → API → service_r
 # Replicate (replicate.com → Account → API tokens)
 REPLICATE_API_TOKEN=<Replicate API token>
 
-# Paddle (şimdilik boş bırakabilirsin)
+# Lemon Squeezy (lemonsqueezy.com — önerilen ödeme)
+LEMON_SQUEEZY_WEBHOOK_SECRET=
+VITE_LEMONSQUEEZY_STORE_URL=https://YOUR-STORE.lemonsqueezy.com
+
+# Paddle (eski; Lemon Squeezy kullanıyorsan boş bırak)
 PADDLE_API_KEY=
 PADDLE_WEBHOOK_SECRET=
 VITE_PADDLE_CHECKOUT_URL=
@@ -101,9 +105,11 @@ UPDATE profiles SET role = 'admin' WHERE email = 'gokturk4business@gmail.com';
 | `VITE_SUPABASE_ANON_KEY` | (anon key) |
 | `SUPABASE_SERVICE_ROLE_KEY` | (service_role key) |
 | `REPLICATE_API_TOKEN` | (Replicate token) |
-| `PADDLE_API_KEY` | (Paddle’dan; ödeme açacaksan) |
-| `PADDLE_WEBHOOK_SECRET` | (Paddle webhook secret) |
-| `VITE_PADDLE_CHECKOUT_URL` | (Checkout link; ödeme açacaksan) |
+| `LEMON_SQUEEZY_WEBHOOK_SECRET` | (Lemon Squeezy → Settings → Webhooks → Signing secret) |
+| `VITE_LEMONSQUEEZY_STORE_URL` | (Mağaza checkout base URL, örn. https://dreemart.lemonsqueezy.com) |
+| `PADDLE_API_KEY` | (Paddle; opsiyonel) |
+| `PADDLE_WEBHOOK_SECRET` | (Paddle webhook; opsiyonel) |
+| `VITE_PADDLE_CHECKOUT_URL` | (Paddle checkout; opsiyonel) |
 | `VITE_APP_URL` | `dreemart-v1.vercel.app` (veya Vercel otomatik set eder) |
 
 4. Deploy’dan sonra **Supabase** → **Authentication** → **URL Configuration**:
@@ -114,14 +120,26 @@ Bundan sonra production’da da Google ile giriş ve API çağrıları çalış�
 
 ---
 
-## 7. Paddle (ödeme)
+## 7. Lemon Squeezy (ödeme — önerilen)
 
-Verdiğin **client-side token** (`live_f696de9ba331368fe7699dcdc8c`) genelde frontend’de Paddle.js ile kullanılır. Backend için:
+1. **Lemon Squeezy** → [app.lemonsqueezy.com](https://app.lemonsqueezy.com) → Store oluştur, ürünlerde her kredi paketi için bir **Variant** oluştur.
+2. **Settings → Webhooks** → Yeni webhook:
+   - **Callback URL:** `https://dreemart.app/api/lemon-squeezy-webhook`
+   - **Signing secret:** 6–40 karakter (kopyala → `LEMON_SQUEEZY_WEBHOOK_SECRET`)
+   - **Events:** en azından `order_created` (tek seferlik satışlar için)
+3. **Store URL:** `https://dreemart.lemonsqueezy.com` → `VITE_LEMONSQUEEZY_STORE_URL`
+4. **Admin → Kredi Paketleri:** Her paket için Lemon Squeezy Variant ID eşlemesi:
+   | Paket (Lemon Squeezy) | Variant ID |
+   |-----------------------|------------|
+   | Mini - 5 Credit        | 1327319    |
+   | Dreamer - 15 Credit   | 1327435    |
+   | Diamond - 50 Credit   | 1327438    |
+   | Mega - 100 Credit     | 1327448    |
+   Bu ID’leri ilgili kredi paketinin “Lemon Squeezy variant ID” alanına yaz.
 
-- **Paddle Dashboard** → Developer Tools / API keys → **API Key** (server-side) → `PADDLE_API_KEY`
-- **Webhooks** → yeni webhook → URL: `https://dreemart-v1.vercel.app/api/paddle-webhook` → **Webhook secret** → `PADDLE_WEBHOOK_SECRET`
+Checkout’ta `user_id` custom data ile gönderilir; webhook’ta kredi bu kullanıcıya eklenir.
 
-Kredi paketleri için checkout link’ini Paddle’da oluşturup `VITE_PADDLE_CHECKOUT_URL` olarak ayarlayabilirsin. Mevcut kod `credits_10` / `credits_50` product ID’lerini tanıyor; farklı paketler kullanacaksan `api/paddle-webhook.ts` içindeki `CREDITS_BY_PRODUCT`’ı güncellemen gerekir.
+**Paddle (eski):** Hâlâ Paddle kullanacaksan webhook URL: `https://dreemart.app/api/paddle-webhook` ve `VITE_PADDLE_CHECKOUT_URL` ile paket eşlemesi yapılır.
 
 ---
 

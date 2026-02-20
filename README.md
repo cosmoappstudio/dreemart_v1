@@ -65,7 +65,7 @@ UPDATE profiles SET role = 'admin' WHERE email = 'senin@email.com';
 ### 5. Paddle (opsiyonel)
 
 1. [Paddle](https://paddle.com) hesabı; kredi paketi (ürün/fiyat) oluştur.
-2. Webhook URL: `https://dreemart.app/api/paddle-webhook`
+2. Lemon Squeezy webhook URL: `https://dreemart.app/api/lemon-squeezy-webhook`
 3. Webhook secret’ı `PADDLE_WEBHOOK_SECRET` olarak ekle.
 4. Checkout link’ini `VITE_PADDLE_CHECKOUT_URL` olarak ayarla (veya uygulama içinde dinamik oluştur).
 
@@ -94,7 +94,7 @@ npm run preview
 - `App.tsx` — Router, login, korumalı/admin route’lar
 - `MainApp.tsx` — Ana uygulama (rüya girişi, galeri, profil)
 - `admin/` — Admin paneli (gizli URL: varsayılan `/yonetimofisi`; `VITE_ADMIN_PATH` ile değiştirilebilir)
-- `api/` — Vercel serverless: `generate-dream`, `paddle-webhook`
+- `api/` — Vercel serverless: `generate-dream`, `lemon-squeezy-webhook`, `paddle-webhook`
 - `context/AuthContext.tsx` — Auth state, Google sign-in
 - `lib/supabase.ts` — Supabase client
 - `supabase/migrations/` — DB şeması ve RLS

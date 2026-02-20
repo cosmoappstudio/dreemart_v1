@@ -18,7 +18,7 @@ export default function AdminPricing() {
     }
     supabase
       .from('pricing_packs')
-      .select('id, name, price, per, credits_text, credits_amount, artist_styles_count, paddle_product_id, four_k, badge, sort_order')
+      .select('id, name, price, per, credits_text, credits_amount, artist_styles_count, paddle_product_id, lemon_squeezy_variant_id, four_k, badge, sort_order')
       .order('sort_order')
       .then(({ data }) => {
         setList((data || []) as PricingPack[]);
@@ -43,6 +43,7 @@ export default function AdminPricing() {
         credits_amount: row.credits_amount ?? 0,
         artist_styles_count: row.artist_styles_count ?? 40,
         paddle_product_id: row.paddle_product_id?.trim() || null,
+        lemon_squeezy_variant_id: row.lemon_squeezy_variant_id?.trim() || null,
         four_k: row.four_k,
         badge: row.badge || null,
         sort_order: row.sort_order,
@@ -66,6 +67,7 @@ export default function AdminPricing() {
         credits_amount: 0,
         artist_styles_count: 40,
         paddle_product_id: null,
+        lemon_squeezy_variant_id: null,
         four_k: false,
         badge: null,
         sort_order: list.length,
@@ -89,7 +91,7 @@ export default function AdminPricing() {
       <div>
         <h1 className="text-2xl font-bold text-white">Kredi Paketleri</h1>
         <p className="text-gray-400 text-sm mt-1">
-          Kredi paketleri: name, price, per, credits_text (gösterim), credits_amount (sayı – Paddle webhook bunu kullanır), paddle_product_id (Paddle ürün ID). four_k ve badge opsiyonel.
+          Kredi paketleri: name, price, per, credits_text (gösterim), credits_amount (sayı), lemon_squeezy_variant_id (Lemon Squeezy variant ID – önerilen) veya paddle_product_id (Paddle). four_k ve badge opsiyonel.
         </p>
       </div>
 
@@ -180,7 +182,17 @@ export default function AdminPricing() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Paddle ürün ID (Paddle’daki product_id; boş bırakılırsa paket id ile eşleşir)</label>
+                <label className="block text-xs text-gray-500 mb-1">Lemon Squeezy variant ID (checkout ve webhook eşlemesi)</label>
+                <input
+                  type="text"
+                  value={row.lemon_squeezy_variant_id ?? ''}
+                  onChange={(e) => update(row.id, 'lemon_squeezy_variant_id', e.target.value.trim() || null)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono"
+                  placeholder="örn. 123456"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Paddle ürün ID (eski; Lemon Squeezy kullanıyorsanız boş bırakın)</label>
                 <input
                   type="text"
                   value={row.paddle_product_id ?? ''}

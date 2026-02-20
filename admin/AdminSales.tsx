@@ -32,7 +32,7 @@ const DATE_RANGE_OPTIONS: { value: DateRangeKey; label: string }[] = [
 
 const LIMIT_OPTIONS = [50, 100, 200, 500, 1000] as const;
 
-/** Paddle amounts are in smallest currency unit (cents for USD). Convert to display value. */
+/** Lemon Squeezy / Paddle amounts are in smallest currency unit (cents for USD). Convert to display value. */
 function parseAmount(amount: string | null, currency: string): number {
   if (!amount) return 0;
   const n = parseFloat(String(amount).replace(/[^0-9.-]/g, ''));
@@ -86,7 +86,7 @@ export default function AdminSales() {
     }
 
     let q = supabase
-      .from('paddle_sales')
+      .from('lemon_squeezy_sales')
       .select(`
         id, transaction_id, created_at, user_id, pack_id, pack_name,
         credits_amount, amount, currency_code, country_code, customer_email,
@@ -127,7 +127,7 @@ export default function AdminSales() {
       fromDate = d.toISOString();
       toDate = new Date().toISOString();
     }
-    let q = supabase.from('paddle_sales').select('pack_name, country_code, currency_code').limit(2000);
+    let q = supabase.from('lemon_squeezy_sales').select('pack_name, country_code, currency_code').limit(2000);
     if (fromDate) q = q.gte('created_at', fromDate);
     if (toDate) q = q.lte('created_at', toDate);
     q.then(({ data }) => {
@@ -189,13 +189,13 @@ export default function AdminSales() {
       <div>
         <h1 className="text-2xl font-bold text-white">Satış & Gelir</h1>
         <p className="text-gray-400 text-sm mt-1">
-          Paddle webhook ile gelen satışlar. Webhook URL: <code className="text-xs bg-gray-800 px-1 rounded">/api/paddle-webhook</code>
+          Lemon Squeezy webhook ile gelen satışlar. Webhook URL: <code className="text-xs bg-gray-800 px-1 rounded">https://dreemart.app/api/lemon-squeezy-webhook</code>
         </p>
       </div>
 
       {noBackend && (
         <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-200">
-          Backend bağlı değil. paddle_sales tablosu için 018 migration'ı çalıştırın.
+          Backend bağlı değil. lemon_squeezy_sales tablosu için 021 migration'ı çalıştırın.
         </div>
       )}
 

@@ -344,6 +344,33 @@ INSERT INTO legal_pages (key, language, title, content) VALUES
   ('cookie_policy', 'de', 'Cookie-Richtlinie', '<h2>Cookie-Richtlinie</h2><p>Wie wir Cookies und ähnliche Technologien nutzen. Im Admin-Bereich bearbeitbar.</p>')
 ON CONFLICT (key, language) DO NOTHING;
 
+-- ========== 021_lemon_squeezy ==========
+ALTER TABLE pricing_packs ADD COLUMN IF NOT EXISTS lemon_squeezy_variant_id TEXT;
+CREATE TABLE IF NOT EXISTS lemon_squeezy_webhook_events (id TEXT PRIMARY KEY, processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS lemon_squeezy_sales (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaction_id TEXT UNIQUE NOT NULL,
+  event_id TEXT NOT NULL,
+  user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  pack_id UUID REFERENCES pricing_packs(id) ON DELETE SET NULL,
+  pack_name TEXT,
+  credits_amount INTEGER NOT NULL DEFAULT 0,
+  amount TEXT,
+  currency_code TEXT DEFAULT 'USD',
+  country_code TEXT,
+  customer_email TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ls_sales_created_at ON lemon_squeezy_sales(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ls_sales_user_id ON lemon_squeezy_sales(user_id);
+CREATE INDEX IF NOT EXISTS idx_ls_sales_pack_id ON lemon_squeezy_sales(pack_id);
+CREATE INDEX IF NOT EXISTS idx_ls_sales_country ON lemon_squeezy_sales(country_code);
+ALTER TABLE lemon_squeezy_sales ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admins can read lemon_squeezy_sales" ON lemon_squeezy_sales;
+CREATE POLICY "Admins can read lemon_squeezy_sales" ON lemon_squeezy_sales FOR SELECT USING (public.is_admin());
+DROP POLICY IF EXISTS "Service role full lemon_squeezy_sales" ON lemon_squeezy_sales;
+CREATE POLICY "Service role full lemon_squeezy_sales" ON lemon_squeezy_sales FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+
 -- ========== Admin ataması (ilk Google girişinden SONRA çalıştır) ==========
 -- Bu satırı ilk kez gokturk4business@gmail.com ile giriş yaptıktan sonra
 -- Supabase SQL Editor'da ayrı bir sorgu olarak çalıştır:
