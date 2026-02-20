@@ -83,7 +83,7 @@ Giriş sonrası tarayıcı bu adrese gidiyor, Vite da o dosyayı (veya modülü)
 
 Doğru ayarlarla giriş sonrası adres `http://localhost:3000/app` (veya production’da `https://dreemart.app/app`) olur; tek sayfa uygulama bu path’i React Router ile işler ve arayüz normal görünür.
 
-**Not:** İlk anda adres çubuğunda `.../app#access_token=...&refresh_token=...` gibi uzun bir hash görebilirsin. Bu normaldir; Supabase token’ları bu şekilde iletir. Uygulama bu token’ları oturuma çevirir ve adres çubuğunu otomatik olarak temizler (`/app` kalır). Sayfa kaynak kodu olarak açılmamalı; arayüz normal DreamInk ekranı olmalıdır.
+**Not:** İlk anda adres çubuğunda `.../app#access_token=...&refresh_token=...` gibi uzun bir hash görebilirsin. Bu normaldir; Supabase token’ları bu şekilde iletir. Uygulama bu token’ları oturuma çevirir ve adres çubuğunu otomatik olarak temizler (`/app` kalır). Sayfa kaynak kodu olarak açılmamalı; arayüz normal Dreemart ekranı olmalıdır.
 
 ### Yedek: Kaynak URL yönlendirmesi (projede eklendi)
 

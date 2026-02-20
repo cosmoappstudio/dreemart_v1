@@ -56,7 +56,7 @@ export default function LegalPage() {
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <Link to="/" className="flex items-center gap-2 min-w-0">
             <Moon className="w-6 h-6 text-white fill-current flex-shrink-0" />
-            <span className="font-serif font-bold text-white truncate">DreamInk</span>
+            <span className="font-serif font-bold text-white truncate">Dreemart</span>
           </Link>
           <Link to={backUrl} className="text-xs sm:text-sm text-gray-400 hover:text-white whitespace-nowrap flex-shrink-0">
             {t.backToApp}
@@ -112,7 +112,7 @@ export default function LegalPage() {
 
       <footer className="border-t border-white/10 py-4 mt-8 sm:mt-12 pb-safe">
         <div className="max-w-3xl mx-auto px-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500">
-          <Link to="/" className="hover:text-white touch-manipulation">DreamInk</Link>
+          <Link to="/" className="hover:text-white touch-manipulation">Dreemart</Link>
           <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
             <Link to="/terms" className="hover:text-white touch-manipulation">Terms</Link>
             <Link to="/privacy" className="hover:text-white touch-manipulation">Privacy</Link>

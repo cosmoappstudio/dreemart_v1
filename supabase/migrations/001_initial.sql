@@ -1,4 +1,4 @@
--- DreamInk: Initial schema
+-- Dreemart: Initial schema
 -- Run in Supabase SQL Editor or: supabase db push
 
 -- Enum types

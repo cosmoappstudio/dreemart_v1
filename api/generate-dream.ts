@@ -11,24 +11,26 @@ function getSupabaseAdmin() {
   return createClient(url, key);
 }
 
-type ReplicateModelRow = { key: string; model_identifier: string; input_preset: string };
+type ReplicateModelRow = { key: string; model_identifier: string; input_preset: string; input_extra?: Record<string, unknown> | null };
 
 const DEFAULT_IMAGE_MODEL = 'google/imagen-4';
 const DEFAULT_INTERPRETATION_MODEL = 'google/gemini-2.5-flash';
 
-function buildImageInput(preset: string, prompt: string): Record<string, unknown> {
+function buildImageInput(preset: string, prompt: string, inputExtra?: Record<string, unknown> | null): Record<string, unknown> {
+  const extra = inputExtra && typeof inputExtra === 'object' ? inputExtra : {};
   switch (preset) {
     case 'imagen':
       return {
         prompt,
-        aspect_ratio: '1:1',
+        aspect_ratio: (extra.aspect_ratio as string) || '1:1',
         safety_filter_level: 'block_only_high',
         output_format: 'png',
+        ...extra,
       };
     case 'flux':
-      return { prompt, aspect_ratio: '1:1' };
+      return { prompt, aspect_ratio: (extra.aspect_ratio as string) || '1:1', ...extra };
     default:
-      return { prompt };
+      return { prompt, ...extra };
   }
 }
 
@@ -89,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let imageConfig: ReplicateModelRow = { key: 'image_generation', model_identifier: DEFAULT_IMAGE_MODEL, input_preset: 'imagen' };
   let interpretationConfig: ReplicateModelRow = { key: 'interpretation', model_identifier: DEFAULT_INTERPRETATION_MODEL, input_preset: 'llm' };
   try {
-    const { data: rows } = await admin.from('replicate_models').select('key, model_identifier, input_preset').in('key', ['image_generation', 'interpretation']);
+    const { data: rows } = await admin.from('replicate_models').select('key, model_identifier, input_preset, input_extra').in('key', ['image_generation', 'interpretation']);
     if (rows?.length) {
       const img = rows.find((r) => r.key === 'image_generation');
       if (img) imageConfig = img as ReplicateModelRow;
@@ -104,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let imageUrl: string;
   try {
-    const input = buildImageInput(imageConfig.input_preset, imagePrompt);
+    const input = buildImageInput(imageConfig.input_preset, imagePrompt, imageConfig.input_extra);
     const output = await replicate.run(imageConfig.model_identifier as `${string}/${string}`, { input });
     imageUrl = extractImageUrl(output);
     if (!imageUrl) throw new Error('No image URL from Replicate');

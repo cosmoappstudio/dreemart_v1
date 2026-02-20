@@ -43,7 +43,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) return <Navigate to={`/${ADMIN_PATH}/login`} replace />;
-  const isAdmin = profile?.role === 'admin' || user?.id === 'demo-user';
+  const isAdmin = profile?.role === 'admin';
   if (!isAdmin) return <Navigate to="/app" replace />;
   return <>{children}</>;
 }
@@ -64,16 +64,10 @@ function OAuthErrorHandler() {
 }
 
 function LoginPage() {
-  const { signInWithGoogle, user, loading, enterDemoMode } = useAuth();
-  const navigate = useNavigate();
+  const { signInWithGoogle, user, loading } = useAuth();
   const location = useLocation();
   const [message, setMessage] = useState<string | null>(null);
   const oauthError = (location.state as { oauthError?: string } | null)?.oauthError;
-
-  const handleDemoMode = () => {
-    enterDemoMode();
-    navigate('/app', { replace: true });
-  };
 
   const handleLoginClick = () => {
     if (supabase) {
@@ -102,7 +96,7 @@ function LoginPage() {
           <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-6 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-[0_0_30px_rgba(129,140,248,0.4)]">
             <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200 mb-2">DreamInk</h1>
+          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200 mb-2">Dreemart</h1>
           <p className="text-gray-400 text-xs sm:text-sm mb-6 sm:mb-8">Rüyalarını ünlü ressamların tarzında sanata dönüştür, yorumunu al.</p>
           {oauthError === 'state_expired' && (
             <p className="mb-4 text-sm text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 text-left">
@@ -117,13 +111,6 @@ function LoginPage() {
             Google ile Giriş Yap / Kayıt Ol
           </button>
           <p className="mt-2 text-xs text-gray-500">Hesabın yoksa aynı butonla kayıt olursun.</p>
-          <button
-            type="button"
-            onClick={handleDemoMode}
-            className="mt-3 w-full py-3 rounded-xl bg-white/10 text-gray-200 font-medium hover:bg-white/15 border border-white/10 transition-all focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:ring-offset-2 focus:ring-offset-[#0B0D17] min-h-[48px] touch-manipulation"
-          >
-            Mock verilerle dene (Demo)
-          </button>
           {message && (
             <p className="mt-4 text-sm text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 text-left">
               {message}
@@ -156,7 +143,7 @@ function AdminLoginPage() {
     );
   }
   if (user) {
-    const isAdmin = profile?.role === 'admin' || user?.id === 'demo-user';
+    const isAdmin = profile?.role === 'admin';
     if (isAdmin) return <Navigate to={`/${ADMIN_PATH}`} replace />;
     return <Navigate to="/app" replace />;
   }
@@ -171,7 +158,7 @@ function AdminLoginPage() {
             <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
           </div>
           <h1 className="text-xl font-bold text-white mb-1">Yönetim Ofisi</h1>
-          <p className="text-gray-400 text-sm mb-6">DreamInk Admin Paneli – Sadece yetkili hesaplar girebilir</p>
+          <p className="text-gray-400 text-sm mb-6">Dreemart Admin Paneli – Sadece yetkili hesaplar girebilir</p>
           <button
             onClick={handleLoginClick}
             className="w-full py-3.5 rounded-xl bg-white text-gray-900 font-bold hover:bg-gray-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[48px]"

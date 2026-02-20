@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { supabase } from './lib/supabase';
 import { ARTISTS as FALLBACK_ARTISTS } from './constants';
-import { MOCK_DREAMS, getMockInterpretation } from './lib/mockData';
 import { Artist, LoadingState, DreamRecord, Language } from './types';
 import { TRANSLATIONS } from './translations';
 import { Link } from 'react-router-dom';
 import { ADMIN_PATH } from './lib/adminPath';
-import { Sparkles, Moon, Share2, X, Stars, User, Home, Crown, CheckCircle2, Zap, History, LayoutGrid, Calendar, Globe, LogOut, AlertCircle, RefreshCw, Palette, Award, ChevronDown, Settings } from 'lucide-react';
+import { Sparkles, Moon, Share2, X, Stars, User, Home, Crown, CheckCircle2, Zap, History, LayoutGrid, Calendar, Globe, LogOut, AlertCircle, RefreshCw, Palette, Award, ChevronDown, Settings, Download } from 'lucide-react';
 import { LEGAL_LINK_LABELS } from './landingTranslations';
 
 const LANGUAGE_OPTIONS: { code: Language; flag: string; label: string }[] = [
@@ -64,11 +63,11 @@ function DreamTextarea({
 }
 
 export default function MainApp() {
-  const { user, profile, signOut, refreshProfile, isDemoMode, setProfile } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<'home' | 'gallery' | 'profile'>('home');
   const [artists, setArtists] = useState<Artist[]>([]);
-  const [artistsLoading, setArtistsLoading] = useState(!!supabase && !isDemoMode);
-  const [dreams, setDreams] = useState<DreamRecord[]>(isDemoMode ? MOCK_DREAMS : []);
+  const [artistsLoading, setArtistsLoading] = useState(!!supabase);
+  const [dreams, setDreams] = useState<DreamRecord[]>([]);
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallView, setPaywallView] = useState<'credits'>('credits');
   const [dreamText, setDreamText] = useState('');
@@ -88,9 +87,9 @@ export default function MainApp() {
   const credits = profile?.credits ?? 0;
   const tier = (profile?.tier === 'pro' ? 'PRO' : 'FREE') as 'FREE' | 'PRO';
 
-  // Load artists from Supabase or use fallback (frontend-only / demo mode)
+  // Load artists from Supabase or use fallback (frontend-only)
   useEffect(() => {
-    if (!supabase || isDemoMode) {
+    if (!supabase) {
       setArtists(FALLBACK_ARTISTS);
       setSelectedArtist(FALLBACK_ARTISTS[0] ?? null);
       setArtistsLoading(false);
@@ -102,10 +101,10 @@ export default function MainApp() {
       setSelectedArtist(list.length > 0 ? list[0] : FALLBACK_ARTISTS[0] ?? null);
       setArtistsLoading(false);
     });
-  }, [isDemoMode]);
+  }, []);
 
   useEffect(() => {
-    if (!user?.id || !supabase || isDemoMode) return;
+    if (!user?.id || !supabase) return;
     supabase.from('dreams').select('id, created_at, prompt, image_url, interpretation, artists(name)').eq('user_id', user.id).order('created_at', { ascending: false }).then(({ data }) => {
       const rows = (data || []) as Array<{ id: string; created_at: string; prompt: string; image_url: string | null; interpretation: string | null; artists?: { name: string } | { name: string }[] | null }>;
       setDreams(rows.map((r) => mapDbDream({
@@ -117,30 +116,26 @@ export default function MainApp() {
         artists: Array.isArray(r.artists) ? (r.artists[0] ?? null) : r.artists ?? null,
       })));
     });
-  }, [user?.id, isDemoMode]);
+  }, [user?.id]);
 
-  // Canlıda kredilerin/username güncel gelmesi için mount'ta, periyodik ve sekme odağında yenileme
+  // İlk yüklemede profil çek (Realtime subscription AuthContext'te – admin kredi vb. anında gelir)
   useEffect(() => {
-    if (!user?.id || user.id === 'demo-user' || isDemoMode) return;
+    if (!user?.id) return;
     refreshProfile();
-    const t = setInterval(refreshProfile, 30 * 1000);
-    const onFocus = () => refreshProfile();
-    window.addEventListener('focus', onFocus);
-    return () => { clearInterval(t); window.removeEventListener('focus', onFocus); };
-  }, [user?.id, isDemoMode]);
+  }, [user?.id]);
 
   // Profil sekmesine geçildiğinde Supabase'den en güncel veriyi çek (username vb.)
   useEffect(() => {
-    if (activeTab === 'profile' && user?.id && user.id !== 'demo-user' && !isDemoMode) refreshProfile();
+    if (activeTab === 'profile' && user?.id) refreshProfile();
   }, [activeTab]);
 
   // Kredi paketleri: Admin/landing ile aynı kaynak (pricing_packs)
   useEffect(() => {
-    if (!supabase || isDemoMode) return;
+    if (!supabase) return;
     supabase.from('pricing_packs').select('id, name, price, credits_text, badge, sort_order').order('sort_order').then(({ data }) => {
       if (data?.length) setCreditPacksFromDb(data as { id: string; name: string; price: string; credits_text: string; badge: string | null }[]);
     });
-  }, [isDemoMode]);
+  }, []);
 
   const handleGenerate = async () => {
     if (!dreamText.trim() || !selectedArtist || !user) return;
@@ -153,28 +148,6 @@ export default function MainApp() {
     setLoadingState(LoadingState.GENERATING_IMAGE);
     setGeneratedImage(null);
     setInterpretation(null);
-
-    if (isDemoMode) {
-      setTimeout(() => {
-        const mockImageUrl = `https://picsum.photos/seed/${encodeURIComponent(dreamText.trim().slice(0, 20))}/800/800`;
-        const mockInterpretation = getMockInterpretation(dreamText.trim(), language);
-        setGeneratedImage(mockImageUrl);
-        setInterpretation(mockInterpretation);
-        setLoadingState(LoadingState.COMPLETE);
-        const newDream: DreamRecord = {
-          id: `mock-${Date.now()}`,
-          date: new Date().toISOString(),
-          prompt: dreamText.trim(),
-          imageUrl: mockImageUrl,
-          interpretation: mockInterpretation,
-          artistName: selectedArtist.name,
-        };
-        setDreams(prev => [newDream, ...prev]);
-        setProfile(profile ? { ...profile, credits: Math.max(0, profile.credits - 1) } : null);
-        setShowSuccessView(true);
-      }, 1500);
-      return;
-    }
 
     try {
       const session = await supabase?.auth.getSession();
@@ -201,7 +174,6 @@ export default function MainApp() {
       setGeneratedImage(data.imageUrl);
       setInterpretation(data.interpretation);
       setLoadingState(LoadingState.COMPLETE);
-      await refreshProfile();
       setDreams(prev => [{
         id: data.id,
         date: data.createdAt,
@@ -211,6 +183,8 @@ export default function MainApp() {
         artistName: data.artistName,
       }, ...prev]);
       setShowSuccessView(true);
+      // Kredileri güncellemek için kısa gecikme; aynı anda focus vs. tetiklenmesin
+      setTimeout(() => refreshProfile(), 1500);
     } catch (e) {
       console.error(e);
       setLoadingState(LoadingState.ERROR);
@@ -230,16 +204,62 @@ export default function MainApp() {
   };
 
   const updateLanguage = async (lang: Language) => {
-    if (isDemoMode && profile) {
-      setProfile({ ...profile, language: lang });
-      return;
-    }
     if (!user?.id || !supabase) return;
     try {
       await supabase.from('profiles').update({ language: lang, updated_at: new Date().toISOString() }).eq('id', user.id);
       await refreshProfile();
     } catch {
       // ignore when backend not ready
+    }
+  };
+
+  const handleDownload = async (imageUrl: string, filename = 'dreemart-dream.png') => {
+    try {
+      const res = await fetch(imageUrl, { mode: 'cors' });
+      if (!res.ok) throw new Error('Failed to fetch');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(imageUrl, '_blank');
+    }
+  };
+
+  const handleShare = async (imageUrl: string, title?: string) => {
+    const shareData: ShareData = { title: title || 'Dreemart', text: title ? `${title} - Dreemart` : 'Dreemart ile oluşturduğum rüya sanatı' };
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        const res = await fetch(imageUrl, { mode: 'cors' });
+        if (res.ok) {
+          const blob = await res.blob();
+          const file = new File([blob], 'dreemart-dream.png', { type: blob.type });
+          await navigator.share({ ...shareData, files: [file] });
+          return;
+        }
+      } catch {
+        // Fallback: share URL only
+      }
+      try {
+        await navigator.share({ ...shareData, url: imageUrl });
+      } catch {
+        try {
+          await navigator.clipboard.writeText(imageUrl);
+          alert(language === 'tr' ? 'Görsel linki panoya kopyalandı.' : 'Image link copied to clipboard.');
+        } catch {
+          window.open(imageUrl, '_blank');
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(imageUrl);
+        alert(language === 'tr' ? 'Görsel linki panoya kopyalandı.' : 'Image link copied to clipboard.');
+      } catch {
+        window.open(imageUrl, '_blank');
+      }
     }
   };
 
@@ -328,8 +348,9 @@ export default function MainApp() {
             <Sparkles className="w-5 h-5" />{t('newDreamButton')}
           </button>
           <div className="grid grid-cols-2 gap-3">
-            <button className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 flex items-center justify-center gap-2"><Share2 className="w-4 h-4" />{t('share')}</button>
-            <button onClick={() => { setShowSuccessView(false); setActiveTab('gallery'); }} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 flex items-center justify-center gap-2"><LayoutGrid className="w-4 h-4" />{t('goToGallery')}</button>
+            <button onClick={() => generatedImage && handleShare(generatedImage, selectedArtist?.name ? `${t('style')} ${selectedArtist.name}` : undefined)} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2"><Share2 className="w-4 h-4" />{t('share')}</button>
+            <button onClick={() => generatedImage && handleDownload(generatedImage)} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2"><Download className="w-4 h-4" />{t('download')}</button>
+            <button onClick={() => { setShowSuccessView(false); setActiveTab('gallery'); }} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2 col-span-2"><LayoutGrid className="w-4 h-4" />{t('goToGallery')}</button>
           </div>
         </div>
       </div>
@@ -343,7 +364,6 @@ export default function MainApp() {
           <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg"><Moon className="w-6 h-6 text-white fill-current" /></div>
           <div>
             <h1 className="text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200">{t('appName')}</h1>
-            {isDemoMode && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300">Demo</span>}
           </div>
         </div>
         <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full border border-white/5">
@@ -587,7 +607,9 @@ export default function MainApp() {
     </>
   );
 
-  const DreamDetailModal = ({ dream, onClose }: { dream: DreamRecord; onClose: () => void }) => (
+  const DreamDetailModal = ({ dream, onClose }: { dream: DreamRecord; onClose: () => void }) => {
+    const fileName = `dreemart-${dream.artistName?.replace(/\s+/g, '-') || 'dream'}.png`;
+    return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-fade-in overflow-y-auto">
       <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} aria-hidden />
       <div className="relative w-full sm:max-w-4xl max-h-[95vh] sm:max-h-[80vh] h-[90vh] sm:h-[80vh] bg-gradient-to-b from-[#1a1c2e] to-[#0B0D17] sm:rounded-2xl overflow-hidden flex flex-col sm:flex-row shadow-2xl animate-slide-up">
@@ -600,22 +622,23 @@ export default function MainApp() {
           <h3 className="font-serif text-xl text-gold-300 mb-4 flex items-center gap-2"><Stars className="w-5 h-5 text-purple-400" />{t('dreamMeaningTitle')}</h3>
           <p className="text-gray-300 leading-relaxed text-sm mb-4">{dream.interpretation}</p>
           {dream.prompt && <div className="mt-4 pt-4 border-t border-white/5"><h4 className="text-xs text-gray-500 uppercase mb-2">{t('dreamNote')}</h4><p className="text-xs text-gray-400 italic">"{dream.prompt}"</p></div>}
-          <div className="mt-6 flex gap-3"><button className="flex-1 py-3 bg-white/10 rounded-lg text-sm font-bold text-white border border-white/10">{t('share')}</button><button className="flex-1 py-3 bg-white/5 rounded-lg text-sm font-bold text-gray-400">{t('download')}</button></div>
+          <div className="mt-6 flex gap-3">
+            <button onClick={() => dream.imageUrl && handleShare(dream.imageUrl, dream.artistName ? `${t('style')} ${dream.artistName}` : undefined)} className="flex-1 py-3 bg-white/10 rounded-lg text-sm font-bold text-white border border-white/10 hover:bg-white/15 flex items-center justify-center gap-2"><Share2 className="w-4 h-4" />{t('share')}</button>
+            <button onClick={() => dream.imageUrl && handleDownload(dream.imageUrl, fileName)} className="flex-1 py-3 bg-white/10 rounded-lg text-sm font-bold text-white border border-white/10 hover:bg-white/15 flex items-center justify-center gap-2"><Download className="w-4 h-4" />{t('download')}</button>
+          </div>
         </div>
       </div>
     </div>
   );
+  }
 
   const Sidebar = () => (
     <div className="hidden md:flex flex-col w-64 flex-shrink-0 border-r border-white/10 bg-[#0B0D17]/50 p-4 gap-2 h-screen sticky top-0">
       <Link to="/" className="flex items-center gap-2 px-4 py-4 mb-4 rounded-xl hover:bg-white/5 transition-colors">
         <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg"><Moon className="w-6 h-6 text-white fill-current" /></div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200 truncate">DreamInk</h1>
+          <h1 className="text-xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200 truncate">Dreemart</h1>
           <span className="text-[10px] text-gray-500">Ana sayfaya dön</span>
-          {isDemoMode && (
-            <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded">Demo</span>
-          )}
         </div>
       </Link>
       {profile?.role === 'admin' && (

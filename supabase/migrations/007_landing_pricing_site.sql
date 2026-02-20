@@ -18,8 +18,8 @@ CREATE POLICY "Admins can manage landing_examples" ON landing_examples FOR ALL
 -- Seed 2 default examples (only if empty)
 INSERT INTO landing_examples (dream_text, artist_name, image_url, sort_order)
 SELECT * FROM (VALUES
-  ('Denizin üstünde yürüyordum, ay ışığı suya vuruyordu...'::text, 'Van Gogh'::text, 'https://picsum.photos/seed/dreamink1/600/400'::text, 0),
-  ('Uçan bir atın sırtında bulutların arasından geçiyordum.'::text, 'Salvador Dalí'::text, 'https://picsum.photos/seed/dreamink2/600/400'::text, 1)
+  ('Denizin üstünde yürüyordum, ay ışığı suya vuruyordu...'::text, 'Van Gogh'::text, 'https://picsum.photos/seed/dreemart1/600/400'::text, 0),
+  ('Uçan bir atın sırtında bulutların arasından geçiyordum.'::text, 'Salvador Dalí'::text, 'https://picsum.photos/seed/dreemart2/600/400'::text, 1)
 ) AS v(dream_text, artist_name, image_url, sort_order)
 WHERE (SELECT COUNT(*) FROM landing_examples) = 0;
 

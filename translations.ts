@@ -3,7 +3,7 @@ import { Language } from './types';
 export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   tr: {
     // General
-    appName: "DreamInk",
+    appName: "Dreemart",
     loadingImage: "Tablo Çiziliyor...",
     loadingInterpret: "Yorumlanıyor...",
     errorGeneric: "Bir hata oluştu.",
@@ -101,7 +101,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     featStandardSpeed: "Standart Hız"
   },
   en: {
-    appName: "DreamInk",
+    appName: "Dreemart",
     loadingImage: "Painting...",
     loadingInterpret: "Interpreting...",
     errorGeneric: "An error occurred.",
@@ -183,7 +183,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     featStandardSpeed: "Standard Speed"
   },
   es: {
-    appName: "DreamInk",
+    appName: "Dreemart",
     loadingImage: "Pintando...",
     loadingInterpret: "Interpretando...",
     errorGeneric: "Ocurrió un error.",
@@ -265,7 +265,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     featStandardSpeed: "Velocidad Estándar"
   },
   de: {
-    appName: "DreamInk",
+    appName: "Dreemart",
     loadingImage: "Malen...",
     loadingInterpret: "Deuten...",
     errorGeneric: "Ein Fehler ist aufgetreten.",

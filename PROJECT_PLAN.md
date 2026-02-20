@@ -1,4 +1,4 @@
-# DreamInk — Proje Planı
+# Dreemart — Proje Planı
 
 Rüyaları ünlü ressamların tarzında sanat eserine çeviren ve yorumlayan AI tabanlı web uygulaması. Full-stack geliştirme, ödeme ve admin paneli dahil.
 
@@ -6,7 +6,7 @@ Rüyaları ünlü ressamların tarzında sanat eserine çeviren ve yorumlayan AI
 
 ## 1. Mevcut Tasarım Özeti (Google AI Studio)
 
-- **Uygulama:** DreamInk — React + Vite + TypeScript, Tailwind CSS
+- **Uygulama:** Dreemart — React + Vite + TypeScript, Tailwind CSS
 - **Akış:** Rüya metni → Ressam tarzında görsel (AI) + Rüya yorumu (AI) → Galeri & detay
 - **Şu anki AI:** Gemini (görsel + yorum); **hedef:** Replicate Imagen-4 + Claude 3.5 Sonnet
 - **Kullanıcı modeli:** Kredi, tier (FREE/PRO), geçmiş, dil (TR/EN/ES/DE)
@@ -229,4 +229,4 @@ Teknik: Mevcut React uygulamasına `/admin` route’ları eklenir; admin layout 
 - **Backend:** Supabase (DB, Auth, Storage) + Vercel serverless/Edge (Replicate, Paddle webhook).
 - **Admin:** Aynı uygulama, `/admin`, API/moderation, ressam ve prompt yönetimi.
 
-Bu plan, mevcut DreamInk tasarımını production’a taşımak için gerekli teknik ve iş adımlarını kapsar. İstersen bir sonraki adımda Faz 1 için somut Supabase migration SQL ve env örneklerini çıkarabiliriz.
+Bu plan, mevcut Dreemart tasarımını production’a taşımak için gerekli teknik ve iş adımlarını kapsar. İstersen bir sonraki adımda Faz 1 için somut Supabase migration SQL ve env örneklerini çıkarabiliriz.

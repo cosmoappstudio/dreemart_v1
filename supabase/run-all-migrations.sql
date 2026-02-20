@@ -1,4 +1,4 @@
--- DreamInk: Tüm migration'lar tek seferde (001 → 008)
+-- Dreemart: Tüm migration'lar tek seferde (001 → 008)
 -- Supabase Dashboard → SQL Editor → New query → yapıştır → Run
 -- Not: İlk çalıştırmada hata alırsan (örn. "type already exists") o bloğu atlayıp devam edebilirsin.
 
@@ -253,10 +253,10 @@ CREATE POLICY "Admins can insert legal_pages" ON legal_pages FOR INSERT
   WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 INSERT INTO legal_pages (key, language, title, content) VALUES
-  ('terms', 'tr', 'Kullanım Koşulları', '<h2>Kullanım Koşulları</h2><p>DreamInk hizmetini kullanarak aşağıdaki koşulları kabul etmiş olursunuz. Lütfen içeriği admin panelinden güncelleyin.</p>'),
-  ('terms', 'en', 'Terms of Use', '<h2>Terms of Use</h2><p>By using DreamInk you agree to the following terms. Please update the content from the admin panel.</p>'),
-  ('terms', 'es', 'Términos de Uso', '<h2>Términos de Uso</h2><p>Al usar DreamInk aceptas los siguientes términos. Actualiza el contenido desde el panel de administración.</p>'),
-  ('terms', 'de', 'Nutzungsbedingungen', '<h2>Nutzungsbedingungen</h2><p>Mit der Nutzung von DreamInk akzeptierst du die folgenden Bedingungen. Bitte aktualisiere den Inhalt im Admin-Bereich.</p>'),
+  ('terms', 'tr', 'Kullanım Koşulları', '<h2>Kullanım Koşulları</h2><p>Dreemart hizmetini kullanarak aşağıdaki koşulları kabul etmiş olursunuz. Lütfen içeriği admin panelinden güncelleyin.</p>'),
+  ('terms', 'en', 'Terms of Use', '<h2>Terms of Use</h2><p>By using Dreemart you agree to the following terms. Please update the content from the admin panel.</p>'),
+  ('terms', 'es', 'Términos de Uso', '<h2>Términos de Uso</h2><p>Al usar Dreemart aceptas los siguientes términos. Actualiza el contenido desde el panel de administración.</p>'),
+  ('terms', 'de', 'Nutzungsbedingungen', '<h2>Nutzungsbedingungen</h2><p>Mit der Nutzung von Dreemart akzeptierst du die folgenden Bedingungen. Bitte aktualisiere den Inhalt im Admin-Bereich.</p>'),
   ('privacy', 'tr', 'Gizlilik Politikası', '<h2>Gizlilik Politikası</h2><p>Kişisel verileriniz nasıl toplanır ve kullanılır. Admin panelinden düzenleyebilirsiniz.</p>'),
   ('privacy', 'en', 'Privacy Policy', '<h2>Privacy Policy</h2><p>How we collect and use your personal data. You can edit this from the admin panel.</p>'),
   ('privacy', 'es', 'Política de Privacidad', '<h2>Política de Privacidad</h2><p>Cómo recopilamos y usamos tus datos. Edita desde el panel de administración.</p>'),
@@ -286,8 +286,8 @@ CREATE POLICY "Admins can manage landing_examples" ON landing_examples FOR ALL
 INSERT INTO landing_examples (dream_text, artist_name, image_url, sort_order)
 SELECT a.dream_text, a.artist_name, a.image_url, a.sort_order
 FROM (VALUES
-  ('Denizin üstünde yürüyordum, ay ışığı suya vuruyordu...'::text, 'Van Gogh'::text, 'https://picsum.photos/seed/dreamink1/600/400'::text, 0),
-  ('Uçan bir atın sırtında bulutların arasından geçiyordum.'::text, 'Salvador Dalí'::text, 'https://picsum.photos/seed/dreamink2/600/400'::text, 1)
+  ('Denizin üstünde yürüyordum, ay ışığı suya vuruyordu...'::text, 'Van Gogh'::text, 'https://picsum.photos/seed/dreemart1/600/400'::text, 0),
+  ('Uçan bir atın sırtında bulutların arasından geçiyordum.'::text, 'Salvador Dalí'::text, 'https://picsum.photos/seed/dreemart2/600/400'::text, 1)
 ) AS a(dream_text, artist_name, image_url, sort_order)
 WHERE (SELECT COUNT(*) FROM landing_examples) = 0;
 
@@ -338,8 +338,8 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS last_purchased_pack_id UUID REFERE
 
 -- ========== 008_legal_cookie_policy ==========
 INSERT INTO legal_pages (key, language, title, content) VALUES
-  ('cookie_policy', 'tr', 'Çerez Politikası', '<h2>Çerez Politikası</h2><p>DreamInk olarak çerezler ve benzeri teknolojileri nasıl kullandığımızı bu sayfada açıklıyoruz. İçeriği admin panelinden güncelleyebilirsiniz.</p>'),
-  ('cookie_policy', 'en', 'Cookie Policy', '<h2>Cookie Policy</h2><p>This page explains how DreamInk uses cookies and similar technologies. You can update the content from the admin panel.</p>'),
+  ('cookie_policy', 'tr', 'Çerez Politikası', '<h2>Çerez Politikası</h2><p>Dreemart olarak çerezler ve benzeri teknolojileri nasıl kullandığımızı bu sayfada açıklıyoruz. İçeriği admin panelinden güncelleyebilirsiniz.</p>'),
+  ('cookie_policy', 'en', 'Cookie Policy', '<h2>Cookie Policy</h2><p>This page explains how Dreemart uses cookies and similar technologies. You can update the content from the admin panel.</p>'),
   ('cookie_policy', 'es', 'Política de Cookies', '<h2>Política de Cookies</h2><p>Cómo utilizamos las cookies y tecnologías similares. Actualiza el contenido desde el panel de administración.</p>'),
   ('cookie_policy', 'de', 'Cookie-Richtlinie', '<h2>Cookie-Richtlinie</h2><p>Wie wir Cookies und ähnliche Technologien nutzen. Im Admin-Bereich bearbeitbar.</p>')
 ON CONFLICT (key, language) DO NOTHING;

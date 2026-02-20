@@ -1,4 +1,4 @@
-# DreamInk Backend Kurulum Rehberi
+# Dreemart Backend Kurulum Rehberi
 
 **Domain:** dreemart-v1.vercel.app (production); isteğe bağlı özel domain: dreemart.app
 

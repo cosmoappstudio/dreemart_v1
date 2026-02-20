@@ -31,6 +31,7 @@ export interface PricingPack {
   per: string;
   credits_text: string;
   credits_amount?: number;
+  artist_styles_count?: number;
   paddle_product_id?: string | null;
   four_k: boolean;
   badge: string | null;
@@ -38,8 +39,8 @@ export interface PricingPack {
 }
 
 const FALLBACK_EXAMPLES: LandingExample[] = [
-  { id: '1', dream_text: 'Denizin üstünde yürüyordum, ay ışığı suya vuruyordu...', artist_name: 'Van Gogh', image_url: 'https://picsum.photos/seed/dreamink1/600/400', sort_order: 0 },
-  { id: '2', dream_text: 'Uçan bir atın sırtında bulutların arasından geçiyordum.', artist_name: 'Salvador Dalí', image_url: 'https://picsum.photos/seed/dreamink2/600/400', sort_order: 1 },
+  { id: '1', dream_text: 'Denizin üstünde yürüyordum, ay ışığı suya vuruyordu...', artist_name: 'Van Gogh', image_url: 'https://picsum.photos/seed/dreemart1/600/400', sort_order: 0 },
+  { id: '2', dream_text: 'Uçan bir atın sırtında bulutların arasından geçiyordum.', artist_name: 'Salvador Dalí', image_url: 'https://picsum.photos/seed/dreemart2/600/400', sort_order: 1 },
 ];
 
 const FALLBACK_PACKS: PricingPack[] = [
@@ -60,6 +61,7 @@ export default function LandingPage() {
   const [examples, setExamples] = useState<LandingExample[]>(FALLBACK_EXAMPLES);
   const [packs, setPacks] = useState<PricingPack[]>(FALLBACK_PACKS);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
   const navigate = useNavigate();
   const howSectionRef = useRef<HTMLElement>(null);
   const t = LANDING[lang];
@@ -69,11 +71,15 @@ export default function LandingPage() {
     supabase.from('landing_examples').select('id, dream_text, artist_name, image_url, sort_order').order('sort_order').then(({ data }) => {
       if (data && data.length >= 2) setExamples(data as LandingExample[]);
     });
-    supabase.from('pricing_packs').select('id, name, price, per, credits_text, four_k, badge, sort_order').order('sort_order').then(({ data }) => {
+    supabase.from('pricing_packs').select('id, name, price, per, credits_text, credits_amount, artist_styles_count, four_k, badge, sort_order').order('sort_order').then(({ data }) => {
       if (data && data.length) setPacks(data as PricingPack[]);
     });
-    supabase.from('site_settings').select('value').eq('key', 'logo_url').single().then(({ data }) => {
-      if (data?.value?.trim()) setLogoUrl(data.value.trim());
+    supabase.from('site_settings').select('key, value').in('key', ['logo_url', 'social_instagram', 'social_tiktok', 'social_facebook', 'social_twitter', 'social_youtube']).then(({ data }) => {
+      const rows = (data ?? []) as { key: string; value: string }[];
+      rows.forEach((r) => {
+        if (r.key === 'logo_url' && r.value?.trim()) setLogoUrl(r.value.trim());
+        else if (r.key.startsWith('social_') && r.value?.trim()) setSocialLinks((s) => ({ ...s, [r.key]: r.value.trim() }));
+      });
     });
   }, []);
 
@@ -97,13 +103,13 @@ export default function LandingPage() {
       <header className="relative z-20 flex items-center justify-between gap-2 px-4 sm:px-6 py-4 sm:py-5 max-w-6xl mx-auto pt-safe mt-2 sm:mt-4">
         <Link to="/" className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           {logoUrl ? (
-            <img src={logoUrl} alt="DreamInk" className="h-9 w-auto sm:h-10 object-contain flex-shrink-0" />
+            <img src={logoUrl} alt="Dreemart" className="h-9 w-auto sm:h-10 object-contain flex-shrink-0" />
           ) : (
             <>
               <div className="p-1.5 sm:p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg sm:rounded-xl flex-shrink-0">
                 <Moon className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-current" />
               </div>
-              <span className="text-lg sm:text-xl font-serif font-bold text-white truncate">DreamInk</span>
+              <span className="text-lg sm:text-xl font-serif font-bold text-white truncate">Dreemart</span>
             </>
           )}
         </Link>
@@ -437,10 +443,10 @@ export default function LandingPage() {
                   <p className="mt-2 sm:mt-3 text-xl sm:text-3xl font-bold text-white tracking-tight">
                     {p.price}<span className="text-[10px] sm:text-sm font-normal text-gray-400">{p.per}</span>
                   </p>
-                  <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">{p.credits_text} {t.packFeature1}</p>
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">{(p.credits_amount ?? 0) > 0 ? `${p.credits_amount} ${t.packConversionText}` : `${p.credits_text} ${t.packFeature1}`}</p>
                 </div>
                 <ul className="space-y-1.5 sm:space-y-2.5 text-xs sm:text-sm text-gray-300 flex-1">
-                  <li className="flex items-center gap-2">✓ {t.packFeature2}</li>
+                  <li className="flex items-center gap-2">✓ {p.artist_styles_count ?? 40} {t.packFeature2Suffix}</li>
                   <li className="flex items-center gap-2">✓ {p.four_k ? t.packFeature4 : t.packFeature3}</li>
                   <li className="flex items-center gap-2">✓ {t.packFeature5}</li>
                   <li className="flex items-center gap-2">✓ {t.packFeature6}</li>
@@ -500,11 +506,11 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8 sm:gap-10 mb-8 sm:mb-10">
             <div className="flex items-center gap-2">
               {logoUrl ? (
-                <img src={logoUrl} alt="DreamInk" className="h-7 w-auto sm:h-8 object-contain flex-shrink-0" />
+                <img src={logoUrl} alt="Dreemart" className="h-7 w-auto sm:h-8 object-contain flex-shrink-0" />
               ) : (
                 <>
                   <Moon className="w-7 h-7 sm:w-8 sm:h-8 text-white fill-current flex-shrink-0" />
-                  <span className="text-lg sm:text-xl font-serif font-bold text-white">DreamInk</span>
+                  <span className="text-lg sm:text-xl font-serif font-bold text-white">Dreemart</span>
                 </>
               )}
             </div>
@@ -534,14 +540,16 @@ export default function LandingPage() {
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">{t.footerSocial}</p>
                 <div className="flex flex-wrap gap-3 sm:gap-4 text-gray-400 text-xs sm:text-sm">
-                  <a href="#" className="hover:text-white touch-manipulation min-h-[44px] flex items-center" aria-label="TikTok">TikTok</a>
-                  <a href="#" className="hover:text-white touch-manipulation min-h-[44px] flex items-center" aria-label="Instagram">Instagram</a>
-                  <a href="#" className="hover:text-white touch-manipulation min-h-[44px] flex items-center" aria-label="Facebook">Facebook</a>
+                  {socialLinks.social_instagram && <a href={socialLinks.social_instagram} target="_blank" rel="noopener noreferrer" className="hover:text-white touch-manipulation min-h-[44px] flex items-center" aria-label="Instagram">Instagram</a>}
+                  {socialLinks.social_tiktok && <a href={socialLinks.social_tiktok} target="_blank" rel="noopener noreferrer" className="hover:text-white touch-manipulation min-h-[44px] flex items-center" aria-label="TikTok">TikTok</a>}
+                  {socialLinks.social_facebook && <a href={socialLinks.social_facebook} target="_blank" rel="noopener noreferrer" className="hover:text-white touch-manipulation min-h-[44px] flex items-center" aria-label="Facebook">Facebook</a>}
+                  {socialLinks.social_twitter && <a href={socialLinks.social_twitter} target="_blank" rel="noopener noreferrer" className="hover:text-white touch-manipulation min-h-[44px] flex items-center" aria-label="X">X</a>}
+                  {socialLinks.social_youtube && <a href={socialLinks.social_youtube} target="_blank" rel="noopener noreferrer" className="hover:text-white touch-manipulation min-h-[44px] flex items-center" aria-label="YouTube">YouTube</a>}
                 </div>
               </div>
             </div>
           </div>
-          <div className="pt-4 sm:pt-6 border-t border-white/5 text-center text-xs sm:text-sm text-gray-500">© DreamInk</div>
+          <div className="pt-4 sm:pt-6 border-t border-white/5 text-center text-xs sm:text-sm text-gray-500">© Dreemart</div>
         </div>
       </footer>
     </div>

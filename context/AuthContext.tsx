@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { DEMO_STORAGE_KEY, MOCK_DEMO_PROFILE } from '../lib/mockData';
 
 export interface Profile {
   id: string;
@@ -17,43 +16,22 @@ export interface Profile {
   last_purchased_pack_id?: string | null;
 }
 
-const DEMO_USER: User = {
-  id: 'demo-user',
-  email: 'demo@dreamink.app',
-  app_metadata: {},
-  user_metadata: {},
-  aud: 'authenticated',
-  created_at: '',
-} as User;
-
 interface AuthState {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  isDemoMode: boolean;
   signInWithGoogle: (redirectPath?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   setProfile: (p: Profile | null) => void;
-  enterDemoMode: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
-function getInitialDemoState(): { user: User | null; profile: Profile | null; loading: boolean } {
-  if (typeof window === 'undefined') return { user: null, profile: null, loading: true };
-  if (sessionStorage.getItem(DEMO_STORAGE_KEY) === '1') {
-    return { user: DEMO_USER, profile: MOCK_DEMO_PROFILE, loading: false };
-  }
-  return { user: null, profile: null, loading: true };
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(getInitialDemoState().user);
-  const [profile, setProfileState] = useState<Profile | null>(getInitialDemoState().profile);
-  const [loading, setLoading] = useState(getInitialDemoState().loading);
-
-  const isDemoMode = user?.id === 'demo-user';
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfileState] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const setProfile = (p: Profile | null) => setProfileState(p);
 
@@ -78,16 +56,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshProfile = async () => {
-    if (user?.id && user.id !== 'demo-user') await fetchProfile(user.id);
+    if (user?.id) await fetchProfile(user.id);
   };
 
+  // Supabase Realtime: profiles değişince (admin kredi vb.) anında güncelle, sayfa yenilemeye gerek yok
   useEffect(() => {
-    if (typeof window !== 'undefined' && sessionStorage.getItem(DEMO_STORAGE_KEY) === '1') {
-      setUser(DEMO_USER);
-      setProfileState(MOCK_DEMO_PROFILE);
-      setLoading(false);
-      return;
-    }
+    if (!supabase || !user?.id) return;
+    const channel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          if (row && typeof row === 'object') {
+            setProfileState({
+              id: String(row.id ?? ''),
+              email: row.email as string | null,
+              full_name: row.full_name as string | null,
+              avatar_url: row.avatar_url as string | null,
+              username: row.username as string | null,
+              credits: Number(row.credits ?? 0),
+              role: String(row.role ?? 'user'),
+              tier: String(row.tier ?? 'free'),
+              language: String(row.language ?? 'tr'),
+              is_banned: Boolean(row.is_banned),
+              last_purchased_pack_id: (row.last_purchased_pack_id as string | null) ?? null,
+            });
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!supabase) {
       setLoading(false);
       return;
@@ -107,7 +110,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => applySession(session));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (sessionStorage.getItem(DEMO_STORAGE_KEY) === '1') return;
       setUser(session?.user ?? null);
       if (session?.user?.id) fetchProfile(session.user.id);
       else setProfileState(null);
@@ -126,28 +128,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    if (typeof window !== 'undefined' && sessionStorage.getItem(DEMO_STORAGE_KEY) === '1') {
-      sessionStorage.removeItem(DEMO_STORAGE_KEY);
-      setUser(null);
-      setProfileState(null);
-      window.location.href = '/login';
-      return;
-    }
     if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
     setProfileState(null);
   };
 
-  const enterDemoMode = () => {
-    if (typeof window !== 'undefined') sessionStorage.setItem(DEMO_STORAGE_KEY, '1');
-    setUser(DEMO_USER);
-    setProfileState(MOCK_DEMO_PROFILE);
-    setLoading(false);
-  };
-
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isDemoMode, signInWithGoogle, signOut, refreshProfile, setProfile, enterDemoMode }}>
+    <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, signOut, refreshProfile, setProfile }}>
       {children}
     </AuthContext.Provider>
   );

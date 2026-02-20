@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
 import { Key, CheckCircle, XCircle, Loader2, RefreshCw, Shield } from 'lucide-react';
 
 interface KeysStatus {
@@ -10,7 +9,6 @@ interface KeysStatus {
 }
 
 export default function AdminKeys() {
-  const { isDemoMode } = useAuth();
   const [status, setStatus] = useState<KeysStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +17,8 @@ export default function AdminKeys() {
     setError(null);
     setLoading(true);
     try {
-      if (isDemoMode || !supabase) {
-        setError('API anahtarları durumu yalnızca canlı oturumla görüntülenebilir.');
+      if (!supabase) {
+        setError('Supabase bağlı değil.');
         setStatus(null);
         setLoading(false);
         return;
@@ -52,7 +50,7 @@ export default function AdminKeys() {
 
   useEffect(() => {
     fetchStatus();
-  }, [isDemoMode]);
+  }, []);
 
   const cards: { key: keyof KeysStatus; label: string; description: string }[] = [
     { key: 'replicate', label: 'Replicate', description: 'Görsel (Imagen-4) ve yorum (Claude) API' },

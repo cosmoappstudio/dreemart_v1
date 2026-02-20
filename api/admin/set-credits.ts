@@ -22,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const admin = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).single();
-  const isAdmin = profile?.role === 'admin' || user.id === 'demo-user';
+  const isAdmin = profile?.role === 'admin';
   if (!isAdmin) {
     return res.status(403).json({ error: 'Forbidden' });
   }

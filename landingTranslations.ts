@@ -31,7 +31,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
     // Section 3: How it works
     howTitle: '3 Adımda Rüyanız Sanata Dönüşüyor',
     step1Title: 'RÜYANI ANLAT',
-    step1Desc: 'Rüyanı yazarak veya sesli anlatarak kaydet. Sadece 30 saniye.',
+    step1Desc: 'Rüyanı yazarak kaydet.',
     step2Title: 'RESSAM SEÇ',
     step2Desc: '40+ ünlü ressamdan birini seç. Van Gogh, Dalí, Monet, Klimt ve daha fazlası.',
     step3Title: 'SANAT ESERİNİ AL',
@@ -61,7 +61,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
     styleTag: 'tarzı',
 
     // Section 6: Features
-    featuresTitle: 'Neden DreamInk?',
+    featuresTitle: 'Neden Dreemart?',
     feat1Title: 'Gerçek Sanat',
     feat1Desc: 'Profesyonel kalite, gerçek sanat estetiği. Her tablo dünya standartlarında.',
     feat2Title: 'Hızlı',
@@ -85,7 +85,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
     test3Author: 'Zeynep S.',
 
     // Section 8: Use Cases
-    useCasesTitle: 'DreamInk ile Neler Yapabilirsin?',
+    useCasesTitle: 'Dreemart ile Neler Yapabilirsin?',
     use1Title: 'HEDİYE',
     use1Desc: 'Sevdiklerine özel hediye yap. Eşsiz ve anlamlı.',
     use2Title: 'DEKORASYON',
@@ -116,7 +116,8 @@ export const LANDING: Record<Language, Record<string, string>> = {
     pack4Per: '/ 30 Kredi',
     pack4Credits: '30 rüya',
     packFeature1: 'rüya tabloya dönüşür',
-    packFeature2: '40 ressam tarzı',
+    packConversionText: 'Rüya yorumu sanat eserine dönüşür!',
+    packFeature2Suffix: 'ressam tarzı',
     packFeature3: 'HD kalite',
     packFeature4: '4K kalite',
     packFeature5: 'AI rüya yorumu',
@@ -202,7 +203,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
 
     howTitle: 'Your Dream Becomes Art in 3 Steps',
     step1Title: 'TELL YOUR DREAM',
-    step1Desc: 'Record your dream by typing or speaking. Just 30 seconds.',
+    step1Desc: 'Record your dream by typing.',
     step2Title: 'CHOOSE AN ARTIST',
     step2Desc: 'Pick from 40+ famous artists. Van Gogh, Dalí, Monet, Klimt and more.',
     step3Title: 'GET YOUR ART',
@@ -229,7 +230,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
     galleryCta: 'See All Artists',
     styleTag: 'style',
 
-    featuresTitle: 'Why DreamInk?',
+    featuresTitle: 'Why Dreemart?',
     feat1Title: 'Real Art',
     feat1Desc: 'Professional quality and real art aesthetic. Every painting meets world-class standards.',
     feat2Title: 'Fast',
@@ -251,7 +252,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
     test3: 'I had my partner\'s dream printed as a painting for their birthday. They were so moved!',
     test3Author: 'Zeynep S.',
 
-    useCasesTitle: 'What Can You Do With DreamInk?',
+    useCasesTitle: 'What Can You Do With Dreemart?',
     use1Title: 'GIFT',
     use1Desc: 'Give a unique gift to loved ones. Meaningful and one-of-a-kind.',
     use2Title: 'DECOR',
@@ -281,7 +282,8 @@ export const LANDING: Record<Language, Record<string, string>> = {
     pack4Per: '/ 30 Credits',
     pack4Credits: '30 dreams',
     packFeature1: 'dreams become paintings',
-    packFeature2: '40 artist styles',
+    packConversionText: 'Dream interpretations turn into artwork!',
+    packFeature2Suffix: 'artist styles',
     packFeature3: 'HD quality',
     packFeature4: '4K quality',
     packFeature5: 'AI dream interpretation',
@@ -364,7 +366,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
 
     howTitle: 'Tu Sueño se Convierte en Arte en 3 Pasos',
     step1Title: 'CUENTA TU SUEÑO',
-    step1Desc: 'Regístralo escribiendo o hablando. Solo 30 segundos.',
+    step1Desc: 'Regístralo escribiendo.',
     step2Title: 'ELIGE UN ARTISTA',
     step2Desc: 'Elige entre más de 40 artistas. Van Gogh, Dalí, Monet, Klimt y más.',
     step3Title: 'RECIBE TU OBRA',
@@ -391,7 +393,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
     galleryCta: 'Ver todos los artistas',
     styleTag: 'estilo',
 
-    featuresTitle: '¿Por qué DreamInk?',
+    featuresTitle: '¿Por qué Dreemart?',
     feat1Title: 'Arte Real',
     feat1Desc: 'Calidad profesional y estética de arte real. Cada cuadro a nivel mundial.',
     feat2Title: 'Rápido',
@@ -413,7 +415,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
     test3: 'Regalé a mi pareja su sueño impreso como cuadro por su cumpleaños. ¡Se emocionó mucho!',
     test3Author: 'Zeynep S.',
 
-    useCasesTitle: '¿Qué Puedes Hacer con DreamInk?',
+    useCasesTitle: '¿Qué Puedes Hacer con Dreemart?',
     use1Title: 'REGALO',
     use1Desc: 'Haz un regalo único a tus seres queridos. Con significado e irrepetible.',
     use2Title: 'DECORACIÓN',
@@ -443,7 +445,8 @@ export const LANDING: Record<Language, Record<string, string>> = {
     pack4Per: '/ 30 Créditos',
     pack4Credits: '30 sueños',
     packFeature1: 'sueños se convierten en cuadros',
-    packFeature2: '40 estilos',
+    packConversionText: '¡Interpretaciones de sueños se convierten en arte!',
+    packFeature2Suffix: 'estilos de artista',
     packFeature3: 'Calidad HD',
     packFeature4: 'Calidad 4K',
     packFeature5: 'Interpretación IA',
@@ -526,7 +529,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
 
     howTitle: 'Dein Traum wird in 3 Schritten zu Kunst',
     step1Title: 'ERZÄHLE DEINEN TRAUM',
-    step1Desc: 'Halte ihn schreibend oder sprechend fest. Nur 30 Sekunden.',
+    step1Desc: 'Halte ihn schreibend fest.',
     step2Title: 'WÄHLE EINEN KÜNSTLER',
     step2Desc: 'Wähle aus 40+ berühmten Künstlern. Van Gogh, Dalí, Monet, Klimt und mehr.',
     step3Title: 'HOL DIR DEIN KUNSTWERK',
@@ -553,7 +556,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
     galleryCta: 'Alle Künstler anzeigen',
     styleTag: 'Stil',
 
-    featuresTitle: 'Warum DreamInk?',
+    featuresTitle: 'Warum Dreemart?',
     feat1Title: 'Echte Kunst',
     feat1Desc: 'Professionelle Qualität und echte Kunstästhetik. Jedes Bild auf Weltniveau.',
     feat2Title: 'Schnell',
@@ -575,7 +578,7 @@ export const LANDING: Record<Language, Record<string, string>> = {
     test3: 'Ich habe der Partnerin ihr Traumbild zum Geburtstag drucken lassen. Sie war sehr gerührt!',
     test3Author: 'Zeynep S.',
 
-    useCasesTitle: 'Was kannst du mit DreamInk machen?',
+    useCasesTitle: 'Was kannst du mit Dreemart machen?',
     use1Title: 'GESCHENK',
     use1Desc: 'Schenke etwas Besonderes. Einzigartig und bedeutsam.',
     use2Title: 'DÉKOR',
@@ -605,7 +608,8 @@ export const LANDING: Record<Language, Record<string, string>> = {
     pack4Per: '/ 30 Credits',
     pack4Credits: '30 Träume',
     packFeature1: 'Träume werden zu Bildern',
-    packFeature2: '40 Künstlerstile',
+    packConversionText: 'Traumdeutungen werden zu Kunstwerken!',
+    packFeature2Suffix: 'Künstlerstile',
     packFeature3: 'HD-Qualität',
     packFeature4: '4K-Qualität',
     packFeature5: 'KI-Traumdeutung',

@@ -46,23 +46,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   await admin.from('paddle_webhook_events').insert({ id: String(eventId) }).then(() => {}).catch(() => {});
 
   if (eventType === 'transaction.completed' || eventType === 'subscription.payment_succeeded') {
-    const customData = body?.data?.custom_data ?? body?.custom_data ?? {};
-    const userId = customData.user_id ?? customData.userId;
-    const productId = (body?.data?.product_id ?? body?.product_id ?? customData.product_id)?.toString?.() ?? customData.product_id;
+    const data = body?.data ?? {};
+    const customData = data.custom_data ?? body?.custom_data ?? {};
+    const userId = (customData.user_id ?? customData.userId) as string | undefined;
+    const items = (data.items ?? []) as Array<{ price?: { product_id?: string; id?: string }; product?: { id?: string } }>;
+    const productId = items[0]?.price?.product_id ?? items[0]?.product?.id ?? items[0]?.price?.id ?? data.product_id ?? customData.product_id;
+    const productIdStr = productId?.toString?.() ?? customData.product_id;
+
     let credits = 0;
     let packId: string | null = null;
-    if (productId) {
-      const { data: byPaddle } = await admin.from('pricing_packs').select('id, credits_amount').eq('paddle_product_id', productId).maybeSingle();
-      const pack = byPaddle ?? (productId.match(/^[0-9a-f-]{36}$/i)
-        ? (await admin.from('pricing_packs').select('id, credits_amount').eq('id', productId).maybeSingle()).data
+    let packName: string | null = null;
+    if (productIdStr) {
+      const { data: byPaddle } = await admin.from('pricing_packs').select('id, credits_amount, name').eq('paddle_product_id', productIdStr).maybeSingle();
+      const pack = byPaddle ?? (productIdStr.match(/^[0-9a-f-]{36}$/i)
+        ? (await admin.from('pricing_packs').select('id, credits_amount, name').eq('id', productIdStr).maybeSingle()).data
         : null;
       if (pack?.credits_amount != null && pack.credits_amount > 0) {
         credits = pack.credits_amount;
         packId = pack.id;
+        packName = pack.name ?? null;
       } else {
-        credits = CREDITS_BY_PRODUCT[productId] ?? (productId?.includes('credits') ? 10 : 0);
+        credits = CREDITS_BY_PRODUCT[productIdStr] ?? (productIdStr?.includes('credits') ? 10 : 0);
       }
     }
+
+    const transactionId = data.id ?? body?.transaction_id ?? eventId;
+    const details = data.details as { totals?: { total?: string; subtotal?: string } } | undefined;
+    const amount = details?.totals?.total ?? details?.totals?.subtotal ?? null;
+    const currencyCode = data.currency_code ?? 'USD';
+    const countryCode = (data.address as { country_code?: string })?.country_code ?? customData.country_code ?? null;
+    const customerEmail = (data.customer as { email?: string })?.email ?? customData.email ?? null;
+
     if (userId && credits > 0) {
       const { data: profile } = await admin.from('profiles').select('credits').eq('id', userId).single();
       if (profile) {
@@ -81,6 +95,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
     }
+
+    await admin.from('paddle_sales').upsert(
+      {
+        transaction_id: String(transactionId),
+        event_id: String(eventId),
+        user_id: userId || null,
+        pack_id: packId,
+        pack_name: packName,
+        credits_amount: credits,
+        amount: amount ? String(amount) : null,
+        currency_code: currencyCode,
+        country_code: countryCode,
+        customer_email: customerEmail,
+      },
+      { onConflict: 'transaction_id', ignoreDuplicates: true }
+    ).then(() => {}).catch(() => {});
   }
 
   return res.status(200).json({ received: true });

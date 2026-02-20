@@ -21,10 +21,10 @@ COMMENT ON TABLE legal_pages IS 'Terms, Privacy, Refund Policy content per langu
 
 -- Seed placeholder content (HTML allowed)
 INSERT INTO legal_pages (key, language, title, content) VALUES
-  ('terms', 'tr', 'Kullanım Koşulları', '<h2>Kullanım Koşulları</h2><p>DreamInk hizmetini kullanarak aşağıdaki koşulları kabul etmiş olursunuz. Lütfen içeriği admin panelinden güncelleyin.</p>'),
-  ('terms', 'en', 'Terms of Use', '<h2>Terms of Use</h2><p>By using DreamInk you agree to the following terms. Please update the content from the admin panel.</p>'),
-  ('terms', 'es', 'Términos de Uso', '<h2>Términos de Uso</h2><p>Al usar DreamInk aceptas los siguientes términos. Actualiza el contenido desde el panel de administración.</p>'),
-  ('terms', 'de', 'Nutzungsbedingungen', '<h2>Nutzungsbedingungen</h2><p>Mit der Nutzung von DreamInk akzeptierst du die folgenden Bedingungen. Bitte aktualisiere den Inhalt im Admin-Bereich.</p>'),
+  ('terms', 'tr', 'Kullanım Koşulları', '<h2>Kullanım Koşulları</h2><p>Dreemart hizmetini kullanarak aşağıdaki koşulları kabul etmiş olursunuz. Lütfen içeriği admin panelinden güncelleyin.</p>'),
+  ('terms', 'en', 'Terms of Use', '<h2>Terms of Use</h2><p>By using Dreemart you agree to the following terms. Please update the content from the admin panel.</p>'),
+  ('terms', 'es', 'Términos de Uso', '<h2>Términos de Uso</h2><p>Al usar Dreemart aceptas los siguientes términos. Actualiza el contenido desde el panel de administración.</p>'),
+  ('terms', 'de', 'Nutzungsbedingungen', '<h2>Nutzungsbedingungen</h2><p>Mit der Nutzung von Dreemart akzeptierst du die folgenden Bedingungen. Bitte aktualisiere den Inhalt im Admin-Bereich.</p>'),
   ('privacy', 'tr', 'Gizlilik Politikası', '<h2>Gizlilik Politikası</h2><p>Kişisel verileriniz nasıl toplanır ve kullanılır. Admin panelinden düzenleyebilirsiniz.</p>'),
   ('privacy', 'en', 'Privacy Policy', '<h2>Privacy Policy</h2><p>How we collect and use your personal data. You can edit this from the admin panel.</p>'),
   ('privacy', 'es', 'Política de Privacidad', '<h2>Política de Privacidad</h2><p>Cómo recopilamos y usamos tus datos. Edita desde el panel de administración.</p>'),

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Palette, FileText, Cpu, Key, Scale, LogOut, Menu, X, Moon, ImageIcon, CreditCard, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Palette, FileText, Cpu, Key, Scale, LogOut, Menu, X, Moon, ImageIcon, CreditCard, Settings, DollarSign } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { adminRoute, ADMIN_PATH } from '../lib/adminPath';
 import AdminDashboard from './AdminDashboard';
@@ -13,9 +13,11 @@ import AdminLegal from './AdminLegal';
 import AdminLanding from './AdminLanding';
 import AdminPricing from './AdminPricing';
 import AdminSite from './AdminSite';
+import AdminSales from './AdminSales';
 
 const ROUTE_KEYS: { key: string; label: string; icon: typeof LayoutDashboard }[] = [
   { key: '', label: 'Dashboard', icon: LayoutDashboard },
+  { key: '/sales', label: 'Satış & Gelir', icon: DollarSign },
   { key: '/users', label: 'Kullanıcılar', icon: Users },
   { key: '/artists', label: 'Ressamlar', icon: Palette },
   { key: '/landing', label: 'Örnek Rüyalar', icon: ImageIcon },
@@ -68,7 +70,7 @@ export default function AdminApp() {
             <div className="p-1.5 rounded-lg bg-indigo-600">
               <Moon className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-white">DreamInk</span>
+            <span className="font-bold text-white">Dreemart</span>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white">
             <X className="w-5 h-5" />
@@ -125,6 +127,7 @@ export default function AdminApp() {
         <main className="flex-1 p-4 md:p-6 overflow-auto">
           <Routes>
             <Route index element={<AdminDashboard />} />
+            <Route path="sales" element={<AdminSales />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="artists" element={<AdminArtists />} />
             <Route path="prompts" element={<AdminPrompts />} />

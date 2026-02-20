@@ -6,8 +6,19 @@ interface ReplicateRow {
   key: string;
   model_identifier: string;
   input_preset: string;
+  input_extra: Record<string, unknown> | null;
   updated_at: string;
 }
+
+const ASPECT_RATIOS: { value: string; label: string }[] = [
+  { value: '1:1', label: '1:1 (Kare)' },
+  { value: '16:9', label: '16:9 (Yatay)' },
+  { value: '9:16', label: '9:16 (Dikey)' },
+  { value: '4:3', label: '4:3' },
+  { value: '3:4', label: '3:4' },
+  { value: '21:9', label: '21:9 (Ultra geniş)' },
+  { value: '9:21', label: '9:21' },
+];
 
 const PRESETS: { value: string; label: string; description: string }[] = [
   { value: 'imagen', label: 'Imagen', description: 'prompt, aspect_ratio, safety_filter_level, output_format' },
@@ -35,17 +46,16 @@ export default function AdminReplicate() {
       setLoading(false);
       return;
     }
-    supabase.from('replicate_models').select('key, model_identifier, input_preset, updated_at').in('key', ['image_generation', 'interpretation']).then(({ data, error }) => {
+    supabase.from('replicate_models').select('key, model_identifier, input_preset, input_extra, updated_at').in('key', ['image_generation', 'interpretation']).then(({ data, error }) => {
+      const defaultRows: ReplicateRow[] = [
+        { key: 'image_generation', model_identifier: 'google/imagen-4', input_preset: 'imagen', input_extra: { aspect_ratio: '1:1' }, updated_at: '' },
+        { key: 'interpretation', model_identifier: 'anthropic/claude-3.5-sonnet', input_preset: 'llm', input_extra: null, updated_at: '' },
+      ];
       if (error) {
-        setRows([
-          { key: 'image_generation', model_identifier: 'google/imagen-4', input_preset: 'imagen', updated_at: '' },
-          { key: 'interpretation', model_identifier: 'anthropic/claude-3.5-sonnet', input_preset: 'llm', updated_at: '' },
-        ]);
+        setRows(defaultRows);
       } else {
-        setRows(data?.length ? (data as ReplicateRow[]) : [
-          { key: 'image_generation', model_identifier: 'google/imagen-4', input_preset: 'imagen', updated_at: '' },
-          { key: 'interpretation', model_identifier: 'anthropic/claude-3.5-sonnet', input_preset: 'llm', updated_at: '' },
-        ]);
+        const rows = (data ?? []) as ReplicateRow[];
+        setRows(rows.length ? rows.map((r) => ({ ...r, input_extra: r.input_extra ?? (r.key === 'image_generation' ? { aspect_ratio: '1:1' } : null) })) : defaultRows);
       }
       setLoading(false);
     });
@@ -58,6 +68,7 @@ export default function AdminReplicate() {
       key: row.key,
       model_identifier: row.model_identifier.trim(),
       input_preset: row.input_preset,
+      input_extra: row.input_extra && Object.keys(row.input_extra).length > 0 ? row.input_extra : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'key' });
     setSavingKey(null);
@@ -138,6 +149,20 @@ export default function AdminReplicate() {
                   </select>
                   <p className="text-xs text-gray-500 mt-1">{PRESETS.find((p) => p.value === row.input_preset)?.description}</p>
                 </div>
+                {row.key === 'image_generation' && row.input_preset === 'imagen' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-xs text-gray-500 mb-1">Imagen-4 çıktı boyutu (aspect_ratio)</label>
+                    <select
+                      value={(row.input_extra?.aspect_ratio as string) ?? '1:1'}
+                      onChange={(e) => setRows((prev) => prev.map((p) => (p.key === row.key ? { ...p, input_extra: { ...(p.input_extra ?? {}), aspect_ratio: e.target.value } } : p)))}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm max-w-xs"
+                    >
+                      {ASPECT_RATIOS.map((a) => (
+                        <option key={a.value} value={a.value}>{a.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               <div className="mt-4 flex items-center gap-3">
                 <button

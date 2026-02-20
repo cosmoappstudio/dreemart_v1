@@ -1,4 +1,4 @@
-# DreamInk
+# Dreemart
 
 Rüyalarınızı ünlü ressamların tarzında sanat eserine dönüştüren AI web uygulaması.
 

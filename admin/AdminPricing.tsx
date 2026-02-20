@@ -18,7 +18,7 @@ export default function AdminPricing() {
     }
     supabase
       .from('pricing_packs')
-      .select('id, name, price, per, credits_text, credits_amount, paddle_product_id, four_k, badge, sort_order')
+      .select('id, name, price, per, credits_text, credits_amount, artist_styles_count, paddle_product_id, four_k, badge, sort_order')
       .order('sort_order')
       .then(({ data }) => {
         setList((data || []) as PricingPack[]);
@@ -41,6 +41,7 @@ export default function AdminPricing() {
         per: row.per,
         credits_text: row.credits_text,
         credits_amount: row.credits_amount ?? 0,
+        artist_styles_count: row.artist_styles_count ?? 40,
         paddle_product_id: row.paddle_product_id?.trim() || null,
         four_k: row.four_k,
         badge: row.badge || null,
@@ -63,6 +64,7 @@ export default function AdminPricing() {
         per: '/ 0 Kredi',
         credits_text: '0 Kredi',
         credits_amount: 0,
+        artist_styles_count: 40,
         paddle_product_id: null,
         four_k: false,
         badge: null,
@@ -165,6 +167,17 @@ export default function AdminPricing() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Ressam tarzı sayısı (örn. 40 – “✓ 40 ressam tarzı” için)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={999}
+                  value={row.artist_styles_count ?? 40}
+                  onChange={(e) => update(row.id, 'artist_styles_count', parseInt(e.target.value, 10) || 40)}
+                  className="w-24 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+                />
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Paddle ürün ID (Paddle’daki product_id; boş bırakılırsa paket id ile eşleşir)</label>

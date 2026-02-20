@@ -117,9 +117,7 @@ Supabase Table Editor’dan `profiles` tablosunda kredi veya username güncelled
 3. **Google ile Giriş Yap**
 4. Giriş yaptığın hesabın `profiles.role = 'admin'` olmalı (yukarıdaki SQL ile ayarlayabilirsin)
 
-Giriş sonrası dashboard’a yönlendirilmezsen:
-- Supabase **Redirect URLs** içinde `https://dreemart.app/yonetimofisi` var mı kontrol et
-- Tarayıcıda tam çıkış yap, tekrar dene
+**Dashboard’a atıyorsa (admin değilsin): SQL Editor'da `UPDATE profiles SET role = 'admin' WHERE email = 'SENIN@EMAIL.com';` veya `012_fix_admin_credits_diagnostic.sql` çalıştır, sayfayı yenile (F5) veya çıkış yapıp tekrar giriş yap. Redirect sorunu varsa: Supabase Redirect URLs'de yonetimofisi ve yonetimofisi/login olmalı.
 
 ---
 
@@ -131,11 +129,36 @@ Giriş sonrası dashboard’a yönlendirilmezsen:
 
 ---
 
+## "infinite recursion detected in policy for relation profiles" Hatası
+
+Bu hata, `profiles` tablosundaki RLS policy'lerinin kendi tablolarını sorgulamasından kaynaklanır. **Supabase SQL Editor**'da `014_fix_profiles_rls_recursion.sql` dosyasının tamamını çalıştır. Bu migration `is_admin()` adında SECURITY DEFINER bir fonksiyon ekler ve policy'leri buna göre günceller; sonsuz döngü ortadan kalkar.
+
+---
+
+## Table Editor / RLS Nedeniyle Kredi/Role Güncelleme Çalışmıyorsa
+
+Supabase **Table Editor** RLS yüzünden güncellemeyi engelleyebilir. **SQL Editor** kullan:
+
+1. Önce `013_rls_fix_admin_credits.sql` içeriğini çalıştır (fonksiyon tanımı)
+2. Sonra şu satırı çalıştır (email'i değiştir):
+
+```sql
+SELECT * FROM set_admin_and_credits('gokturk4business@gmail.com', 10);
+```
+
+Bu fonksiyon `SECURITY DEFINER` ile çalıştığı için RLS'i bypass eder ve admin + kredi ataması yapar. Alternatif olarak `012_fix_admin_credits_diagnostic.sql` da deneyebilirsin.
+
+---
+
 ## Kontrol Listesi
 
 - [ ] Vercel’de `VITE_APP_URL=dreemart.app` tanımlı
 - [ ] Supabase Site URL = `https://dreemart.app`
 - [ ] Supabase Redirect URLs’de dreemart.app ve yonetimofisi var
 - [ ] `011_handle_new_user_credits.sql` çalıştırıldı
+- [ ] `015_realtime_profiles.sql` çalıştırıldı (profil/kredi anlık güncelleme)
+- [ ] `016_social_links_and_site_assets.sql` çalıştırıldı (footer sosyal linkleri, logo upload)
+- [ ] **"infinite recursion" hatası varsa:** `014_fix_profiles_rls_recursion.sql` çalıştırıldı (öncelikli)
+- [ ] Admin/kredi RLS engelliyorsa: `013_rls_fix_admin_credits.sql` çalıştırıldı, `set_admin_and_credits('email', 10)` çağrıldı
 - [ ] `profiles.role = 'admin'` kendi hesabına atandı
 - [ ] Yeni deploy yapıldı (Vercel)
