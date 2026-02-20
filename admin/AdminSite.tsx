@@ -77,7 +77,9 @@ export default function AdminSite() {
       return;
     }
     const { data: urlData } = supabase.storage.from('site-assets').getPublicUrl(path);
-    setLogoUrl(urlData?.publicUrl ?? '');
+    const url = urlData?.publicUrl ?? '';
+    setLogoUrl(url);
+    await supabase.from('site_settings').upsert({ key: 'logo_url', value: url, updated_at: new Date().toISOString() }, { onConflict: 'key' });
     setUploadingLogo(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
