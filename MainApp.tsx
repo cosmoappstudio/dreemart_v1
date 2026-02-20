@@ -80,6 +80,7 @@ export default function MainApp() {
   const [selectedDreamStart, setSelectedDreamStart] = useState<DreamRecord | null>(null);
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [creditPacksFromDb, setCreditPacksFromDb] = useState<{ id: string; name: string; price: string; credits_text: string; badge: string | null; lemon_squeezy_variant_id?: string | null }[]>([]);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const language = (profile?.language || 'tr') as Language;
   const currentLangOption = LANGUAGE_OPTIONS.find((o) => o.code === language) ?? LANGUAGE_OPTIONS[0];
@@ -193,23 +194,29 @@ export default function MainApp() {
   };
 
   const handlePurchase = (planId: string) => {
+    setCheckoutError(null);
     const pack = creditPacksFromDb.find((p) => p.id === planId);
     const storeUrl = import.meta.env.VITE_LEMONSQUEEZY_STORE_URL as string | undefined;
     const variantId = pack && 'lemon_squeezy_variant_id' in pack ? pack.lemon_squeezy_variant_id : null;
     if (storeUrl && variantId) {
       const base = storeUrl.replace(/\/$/, '');
       const url = `${base}/checkout/buy/${variantId}?checkout[custom][user_id]=${encodeURIComponent(user?.id || '')}`;
-      window.open(url);
-    } else {
-      const checkoutUrl = import.meta.env.VITE_PADDLE_CHECKOUT_URL;
-      if (checkoutUrl) {
-        const url = new URL(checkoutUrl);
-        url.searchParams.set('user_id', user?.id || '');
-        url.searchParams.set('product', planId);
-        window.open(url.toString());
-      }
+      const w = window.open(url);
+      if (w) setShowPaywall(false);
+      else setCheckoutError(language === 'tr' ? 'Popup engellendi. Lütfen tarayıcıda açılır pencerelere izin verin.' : 'Popup blocked. Please allow popups for this site.');
+      return;
     }
-    setShowPaywall(false);
+    const checkoutUrl = import.meta.env.VITE_PADDLE_CHECKOUT_URL;
+    if (checkoutUrl) {
+      const url = new URL(checkoutUrl);
+      url.searchParams.set('user_id', user?.id || '');
+      url.searchParams.set('product', planId);
+      const w = window.open(url.toString());
+      if (w) setShowPaywall(false);
+      else setCheckoutError(language === 'tr' ? 'Popup engellendi. Lütfen tarayıcıda açılır pencerelere izin verin.' : 'Popup blocked. Please allow popups for this site.');
+      return;
+    }
+    setCheckoutError(language === 'tr' ? 'Ödeme sayfası şu an hazır değil. Lütfen daha sonra tekrar deneyin.' : 'Checkout is not configured. Please try again later.');
   };
 
   const updateLanguage = async (lang: Language) => {
@@ -309,14 +316,19 @@ export default function MainApp() {
 
   const PaywallModal = () => (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto">
-      <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowPaywall(false)} aria-hidden />
+      <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => { setShowPaywall(false); setCheckoutError(null); }} aria-hidden />
       <div className="relative w-full max-w-md bg-gradient-to-b from-indigo-950 to-[#0B0D17] border border-gold-500/20 rounded-2xl overflow-hidden shadow-2xl animate-slide-up">
-        <button onClick={() => setShowPaywall(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-gold-400 rounded-full p-1" aria-label="Kapat"><X className="w-6 h-6" /></button>
+        <button onClick={() => { setShowPaywall(false); setCheckoutError(null); }} className="absolute top-4 right-4 text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-gold-400 rounded-full p-1" aria-label="Kapat"><X className="w-6 h-6" /></button>
         <div className="p-6 text-center">
           <div className="w-16 h-16 mx-auto bg-gradient-to-br from-gold-300 to-amber-600 rounded-full flex items-center justify-center mb-4"><Crown className="w-8 h-8 text-black" /></div>
           <h2 className="text-2xl font-serif font-bold text-white">{t('paywallCreditsTitle')}</h2>
           <p className="text-sm text-gray-400 mt-2">{t('paywallCreditsDesc')}</p>
         </div>
+        {checkoutError && (
+          <div className="mx-6 mb-2 px-4 py-2 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-200 text-sm">
+            {checkoutError}
+          </div>
+        )}
         <div className="px-6 pb-6 space-y-4">
           {getCreditPacks().map((pack) => (
             <div key={pack.id} onClick={() => handlePurchase(pack.id)} className="relative p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all cursor-pointer flex items-center justify-between">
