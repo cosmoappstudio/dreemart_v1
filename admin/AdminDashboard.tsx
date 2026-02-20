@@ -26,9 +26,10 @@ interface RecentDream {
   artist_id?: string;
   artists?: { name: string } | { name: string }[] | null;
   profiles?: { email: string | null; full_name: string | null; last_purchased_pack_id: string | null } | Array<{ email: string | null; full_name: string | null; last_purchased_pack_id: string | null }> | null;
-  // PostgREST bazen tekil ilişki adı döner
+  // PostgREST bazen tekil ilişki adı döner; user_id -> profiles bazen "user" olarak döner
   artist?: { name: string } | null;
   profile?: { email: string | null; full_name: string | null; last_purchased_pack_id: string | null } | null;
+  user?: { email: string | null; full_name: string | null; last_purchased_pack_id: string | null } | null;
 }
 
 function getArtistFromDream(dream: RecentDream): { name: string } | null | undefined {
@@ -37,7 +38,7 @@ function getArtistFromDream(dream: RecentDream): { name: string } | null | undef
 }
 function getProfileFromDream(dream: RecentDream): { email: string | null; full_name: string | null; last_purchased_pack_id: string | null } | null | undefined {
   const p = Array.isArray(dream.profiles) ? dream.profiles[0] : dream.profiles;
-  return p ?? dream.profile ?? null;
+  return p ?? dream.profile ?? dream.user ?? null;
 }
 
 function parseAmount(amount: string | null, currency: string): number {
@@ -79,8 +80,8 @@ export default function AdminDashboard() {
     (async () => {
       let baseDreams = supabase.from('dreams').select(`
         id, created_at, prompt, user_id, image_url, moderation_status, artist_id,
-        artist:artists(name),
-        profile:profiles(email, full_name, last_purchased_pack_id)
+        artists(name),
+        profiles(email, full_name, last_purchased_pack_id)
       `, { count: 'exact' });
       if (fromDate) baseDreams = baseDreams.gte('created_at', fromDate);
       if (toDate) baseDreams = baseDreams.lte('created_at', toDate);
@@ -132,7 +133,11 @@ export default function AdminDashboard() {
       const revMain = mainSales.reduce((s, x) => s + parseAmount(x.amount, x.currency_code), 0);
       const revCompare = compareSales.reduce((s, x) => s + parseAmount(x.amount, x.currency_code), 0);
 
-      let recentData = (recent.data ?? []) as RecentDream[];
+      if (recent.error) console.error('Dashboard dreams query error:', recent.error);
+      const rawRows = recent.data ?? [];
+      if (rawRows.length > 0) console.log('Dashboard recent dream (first row keys):', Object.keys(rawRows[0]), rawRows[0]);
+
+      let recentData = rawRows as RecentDream[];
       if (filterPackId) {
         recentData = recentData.filter((x) => getProfileFromDream(x)?.last_purchased_pack_id === filterPackId);
       }
