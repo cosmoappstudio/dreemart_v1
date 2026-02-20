@@ -26,6 +26,18 @@ interface RecentDream {
   artist_id?: string;
   artists?: { name: string } | { name: string }[] | null;
   profiles?: { email: string | null; full_name: string | null; last_purchased_pack_id: string | null } | Array<{ email: string | null; full_name: string | null; last_purchased_pack_id: string | null }> | null;
+  // PostgREST bazen tekil ilişki adı döner
+  artist?: { name: string } | null;
+  profile?: { email: string | null; full_name: string | null; last_purchased_pack_id: string | null } | null;
+}
+
+function getArtistFromDream(dream: RecentDream): { name: string } | null | undefined {
+  const a = Array.isArray(dream.artists) ? dream.artists[0] : dream.artists;
+  return a ?? dream.artist ?? null;
+}
+function getProfileFromDream(dream: RecentDream): { email: string | null; full_name: string | null; last_purchased_pack_id: string | null } | null | undefined {
+  const p = Array.isArray(dream.profiles) ? dream.profiles[0] : dream.profiles;
+  return p ?? dream.profile ?? null;
 }
 
 function parseAmount(amount: string | null, currency: string): number {
@@ -67,8 +79,8 @@ export default function AdminDashboard() {
     (async () => {
       let baseDreams = supabase.from('dreams').select(`
         id, created_at, prompt, user_id, image_url, moderation_status, artist_id,
-        artists(name),
-        profiles(email, full_name, last_purchased_pack_id)
+        artist:artists(name),
+        profile:profiles(email, full_name, last_purchased_pack_id)
       `, { count: 'exact' });
       if (fromDate) baseDreams = baseDreams.gte('created_at', fromDate);
       if (toDate) baseDreams = baseDreams.lte('created_at', toDate);
@@ -122,10 +134,7 @@ export default function AdminDashboard() {
 
       let recentData = (recent.data ?? []) as RecentDream[];
       if (filterPackId) {
-        recentData = recentData.filter((x) => {
-          const p = Array.isArray(x.profiles) ? x.profiles[0] : x.profiles;
-          return p?.last_purchased_pack_id === filterPackId;
-        });
+        recentData = recentData.filter((x) => getProfileFromDream(x)?.last_purchased_pack_id === filterPackId);
       }
 
       setStats({
@@ -145,7 +154,7 @@ export default function AdminDashboard() {
     })();
   }, [fromDate, toDate, compareFrom, compareTo, dateRangeValue.compareEnabled, filterCountry, filterPackId, filterArtistId]);
 
-  const formatMoney = (n: number) => (n >= 0 ? `₺${n.toFixed(2)}` : `-₺${(-n).toFixed(2)}`);
+  const formatMoney = (n: number) => (n >= 0 ? `$${n.toFixed(2)}` : `-$${(-n).toFixed(2)}`);
   const delta = (curr: number, prev: number) => (prev === 0 ? (curr === 0 ? 0 : 100) : Math.round(((curr - prev) / prev) * 100));
   const compareLabel = dateRangeValue.compareEnabled ? (dateRangeValue.compareType === 'previous_7' ? 'önceki 7 gün' : dateRangeValue.compareType === 'previous_year' ? 'önceki yıl' : 'önceki dönem') : '';
 
@@ -310,7 +319,7 @@ export default function AdminDashboard() {
                     <td className="px-4 py-3">
                       <div className="text-sm text-gray-300">
                         {(() => {
-                          const p = Array.isArray(dream.profiles) ? dream.profiles[0] : dream.profiles;
+                          const p = getProfileFromDream(dream);
                           return (
                             <>
                               <span className="font-medium text-white">{p?.full_name || p?.email || '-'}</span>
@@ -323,14 +332,11 @@ export default function AdminDashboard() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-300">
-                      {(() => {
-                        const a = Array.isArray(dream.artists) ? dream.artists[0] : dream.artists;
-                        return a?.name ?? '-';
-                      })()}
+                      {getArtistFromDream(dream)?.name ?? '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-400">
                       {(() => {
-                        const p = Array.isArray(dream.profiles) ? dream.profiles[0] : dream.profiles;
+                        const p = getProfileFromDream(dream);
                         return p?.last_purchased_pack_id ? (packNames[p.last_purchased_pack_id] ?? '-') : '-';
                       })()}
                     </td>
