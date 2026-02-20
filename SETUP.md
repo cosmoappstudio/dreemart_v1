@@ -106,7 +106,9 @@ UPDATE profiles SET role = 'admin' WHERE email = 'gokturk4business@gmail.com';
 | `SUPABASE_SERVICE_ROLE_KEY` | (service_role key) |
 | `REPLICATE_API_TOKEN` | (Replicate token) |
 | `LEMON_SQUEEZY_WEBHOOK_SECRET` | (Lemon Squeezy → Settings → Webhooks → Signing secret) |
-| `VITE_LEMONSQUEEZY_STORE_URL` | (Mağaza checkout base URL, örn. https://dreemart.lemonsqueezy.com) |
+| `LEMON_SQUEEZY_API_KEY` | (Lemon Squeezy → Settings → API → API Key) |
+| `LEMON_SQUEEZY_STORE_ID` | (Lemon Squeezy → Settings → Stores → mağaza ID, sayı) |
+| `VITE_LEMONSQUEEZY_STORE_URL` | (Mağaza URL; opsiyonel) |
 | `PADDLE_API_KEY` | (Paddle; opsiyonel) |
 | `PADDLE_WEBHOOK_SECRET` | (Paddle webhook; opsiyonel) |
 | `VITE_PADDLE_CHECKOUT_URL` | (Paddle checkout; opsiyonel) |
@@ -127,10 +129,10 @@ Bundan sonra production’da da Google ile giriş ve API çağrıları çalış�
    - **Callback URL:** `https://dreemart.app/api/lemon-squeezy-webhook`
    - **Signing secret:** 6–40 karakter (kopyala → `LEMON_SQUEEZY_WEBHOOK_SECRET`)
    - **Events:** en azından `order_created` (tek seferlik satışlar için)
-3. **Store URL:** `https://dreemart.lemonsqueezy.com` → `VITE_LEMONSQUEEZY_STORE_URL`
-4. **Admin → Kredi Paketleri:** Her paket için iki alan:
-   - **Checkout UUID:** Lemon Squeezy’de ürünü paylaşırken (Share) gördüğün linkteki UUID (örn. `0a6a878f-35cd-498a-b918-67bc5a26d585`). Ödeme linki bununla oluşur.
-   - **Variant ID (sayısal):** Webhook eşlemesi için (Mini: 1327319, Dreamer: 1327435, Diamond: 1327438, Mega: 1327448).
+3. **API Key + Store ID:** Checkout linki her tıklamada API ile oluşturulur (UUID değiştiği için).
+   - **Settings → API** (veya Account) → **API Key** → `LEMON_SQUEEZY_API_KEY`
+   - **Settings → Stores** → Mağazanın **ID**’si (sayı) → `LEMON_SQUEEZY_STORE_ID`
+4. **Admin → Kredi Paketleri:** Her paket için **Lemon Squeezy variant ID (sayısal)** yeterli (Mini: 1327319, Dreamer: 1327435, Diamond: 1327438, Mega: 1327448). Checkout UUID alanı artık zorunlu değil.
 
 Checkout’ta `user_id` custom data ile gönderilir; webhook’ta kredi bu kullanıcıya eklenir.
 

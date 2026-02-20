@@ -193,19 +193,31 @@ export default function MainApp() {
     }
   };
 
-  const handlePurchase = (planId: string) => {
+  const handlePurchase = async (planId: string) => {
     setCheckoutError(null);
     const pack = creditPacksFromDb.find((p) => p.id === planId);
-    const storeUrl = import.meta.env.VITE_LEMONSQUEEZY_STORE_URL as string | undefined;
-    const checkoutUuid = pack && 'lemon_squeezy_checkout_uuid' in pack ? pack.lemon_squeezy_checkout_uuid : null;
-    const variantOrUuid = (checkoutUuid?.trim() || (pack && 'lemon_squeezy_variant_id' in pack ? pack.lemon_squeezy_variant_id : null))?.trim();
-    if (storeUrl && variantOrUuid) {
-      const base = storeUrl.replace(/\/$/, '');
-      const url = `${base}/checkout/buy/${variantOrUuid}?checkout[custom][user_id]=${encodeURIComponent(user?.id || '')}`;
-      const w = window.open(url);
-      if (w) setShowPaywall(false);
-      else setCheckoutError(language === 'tr' ? 'Popup engellendi. Lütfen tarayıcıda açılır pencerelere izin verin.' : 'Popup blocked. Please allow popups for this site.');
-      return;
+    const variantId = pack && 'lemon_squeezy_variant_id' in pack ? pack.lemon_squeezy_variant_id : null;
+    const variantIdNum = variantId != null ? (typeof variantId === 'string' ? variantId.trim() : String(variantId)) : '';
+    // Lemon Squeezy: API ile checkout URL oluştur (UUID değiştiği için sabit link yerine)
+    if (variantIdNum && user?.id) {
+      const base = (import.meta.env.VITE_APP_URL && !import.meta.env.VITE_APP_URL.startsWith('http')) ? `https://${import.meta.env.VITE_APP_URL}` : (import.meta.env.VITE_APP_URL || window.location.origin);
+      try {
+        const res = await fetch(`${base}/api/lemon-squeezy-create-checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: user.id, variant_id: variantIdNum }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.url) {
+          const w = window.open(data.url);
+          if (w) setShowPaywall(false);
+          else setCheckoutError(language === 'tr' ? 'Popup engellendi. Lütfen tarayıcıda açılır pencerelere izin verin.' : 'Popup blocked. Please allow popups for this site.');
+          return;
+        }
+      } catch {
+        setCheckoutError(language === 'tr' ? 'Ödeme sayfası açılamadı. Lütfen tekrar deneyin.' : 'Could not open checkout. Please try again.');
+        return;
+      }
     }
     const checkoutUrl = import.meta.env.VITE_PADDLE_CHECKOUT_URL;
     if (checkoutUrl) {
