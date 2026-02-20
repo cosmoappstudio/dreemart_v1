@@ -1,5 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+
+export const config = { runtime: 'edge' };
 
 function getSupabaseAdmin() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -8,28 +9,56 @@ function getSupabaseAdmin() {
   return createClient(url, key);
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+function jsonResponse(obj: object, status: number) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+export default async function handler(req: Request) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
-  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
-  const signature = req.headers['x-signature'] as string;
+  const rawBody = await req.text();
+  const signature = req.headers.get('x-signature');
   const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET;
   if (!signature || !secret) {
-    return res.status(400).json({ error: 'Webhook not configured' });
+    return jsonResponse({ error: 'Webhook not configured' }, 400);
   }
 
-  const crypto = await import('crypto');
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(rawBody);
-  const expected = hmac.digest('hex');
-  if (expected.length !== signature.length || !crypto.timingSafeEqual(Buffer.from(expected, 'utf8'), Buffer.from(signature, 'utf8'))) {
-    return res.status(401).json({ error: 'Invalid signature' });
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sigBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
+  const expected = Array.from(new Uint8Array(sigBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  if (expected.length !== signature.length) {
+    return jsonResponse({ error: 'Invalid signature' }, 401);
+  }
+  const sigBytes = encoder.encode(signature);
+  const expBytes = encoder.encode(expected);
+  let equal = true;
+  for (let i = 0; i < sigBytes.length; i++) {
+    if (sigBytes[i] !== expBytes[i]) {
+      equal = false;
+      break;
+    }
+  }
+  if (!equal) {
+    return jsonResponse({ error: 'Invalid signature' }, 401);
   }
 
-  const body = typeof req.body === 'object' ? req.body : JSON.parse(rawBody);
-  const eventName = (req.headers['x-event-name'] as string) || body?.meta?.event_name;
+  const body = JSON.parse(rawBody);
+  const eventName = req.headers.get('x-event-name') || body?.meta?.event_name;
   const eventId = body?.data?.id ?? body?.meta?.event_name + '-' + Date.now();
 
   const admin = getSupabaseAdmin();
@@ -39,18 +68,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .eq('id', String(eventId))
     .single();
   if (existing) {
-    return res.status(200).json({ received: true });
+    return jsonResponse({ received: true }, 200);
   }
 
-  await admin
-    .from('lemon_squeezy_webhook_events')
-    .insert({ id: String(eventId) })
-    .then(() => {})
-    .catch(() => {});
+  await admin.from('lemon_squeezy_webhook_events').insert({ id: String(eventId) });
 
-  // One-time orders: order_created. Subscriptions: subscription_created / subscription_payment_success
   const isOrder = eventName === 'order_created';
-  const isSubPayment = eventName === 'subscription_payment_success' || eventName === 'subscription_payment_succeeded';
+  const isSubPayment =
+    eventName === 'subscription_payment_success' || eventName === 'subscription_payment_succeeded';
 
   if (isOrder || isSubPayment) {
     const data = body?.data ?? {};
@@ -102,7 +127,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { data: profile } = await admin.from('profiles').select('credits').eq('id', userId).single();
       if (profile) {
         const newCredits = (profile.credits ?? 0) + credits;
-        const updatePayload: { credits: number; updated_at: string; last_purchased_pack_id?: string | null } = {
+        const updatePayload: {
+          credits: number;
+          updated_at: string;
+          last_purchased_pack_id?: string | null;
+        } = {
           credits: newCredits,
           updated_at: new Date().toISOString(),
         };
@@ -117,26 +146,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    await admin
-      .from('lemon_squeezy_sales')
-      .upsert(
-        {
-          transaction_id: String(transactionId),
-          event_id: String(eventId),
-          user_id: userId || null,
-          pack_id: packId,
-          pack_name: packName,
-          credits_amount: credits,
-          amount: total,
-          currency_code: currencyCode,
-          country_code: countryCode,
-          customer_email: userEmail,
-        },
-        { onConflict: 'transaction_id', ignoreDuplicates: true }
-      )
-      .then(() => {})
-      .catch(() => {});
+    await admin.from('lemon_squeezy_sales').upsert(
+      {
+        transaction_id: String(transactionId),
+        event_id: String(eventId),
+        user_id: userId || null,
+        pack_id: packId,
+        pack_name: packName,
+        credits_amount: credits,
+        amount: total,
+        currency_code: currencyCode,
+        country_code: countryCode,
+        customer_email: userEmail,
+      },
+      { onConflict: 'transaction_id', ignoreDuplicates: true }
+    );
   }
 
-  return res.status(200).json({ received: true });
+  return jsonResponse({ received: true }, 200);
 }
