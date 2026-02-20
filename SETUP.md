@@ -128,14 +128,9 @@ Bundan sonra production’da da Google ile giriş ve API çağrıları çalış�
    - **Signing secret:** 6–40 karakter (kopyala → `LEMON_SQUEEZY_WEBHOOK_SECRET`)
    - **Events:** en azından `order_created` (tek seferlik satışlar için)
 3. **Store URL:** `https://dreemart.lemonsqueezy.com` → `VITE_LEMONSQUEEZY_STORE_URL`
-4. **Admin → Kredi Paketleri:** Her paket için Lemon Squeezy Variant ID eşlemesi:
-   | Paket (Lemon Squeezy) | Variant ID |
-   |-----------------------|------------|
-   | Mini - 5 Credit        | 1327319    |
-   | Dreamer - 15 Credit   | 1327435    |
-   | Diamond - 50 Credit   | 1327438    |
-   | Mega - 100 Credit     | 1327448    |
-   Bu ID’leri ilgili kredi paketinin “Lemon Squeezy variant ID” alanına yaz.
+4. **Admin → Kredi Paketleri:** Her paket için iki alan:
+   - **Checkout UUID:** Lemon Squeezy’de ürünü paylaşırken (Share) gördüğün linkteki UUID (örn. `0a6a878f-35cd-498a-b918-67bc5a26d585`). Ödeme linki bununla oluşur.
+   - **Variant ID (sayısal):** Webhook eşlemesi için (Mini: 1327319, Dreamer: 1327435, Diamond: 1327438, Mega: 1327448).
 
 Checkout’ta `user_id` custom data ile gönderilir; webhook’ta kredi bu kullanıcıya eklenir.
 

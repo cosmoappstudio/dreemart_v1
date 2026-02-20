@@ -18,7 +18,7 @@ export default function AdminPricing() {
     }
     supabase
       .from('pricing_packs')
-      .select('id, name, price, per, credits_text, credits_amount, artist_styles_count, paddle_product_id, lemon_squeezy_variant_id, four_k, badge, sort_order')
+      .select('id, name, price, per, credits_text, credits_amount, artist_styles_count, paddle_product_id, lemon_squeezy_variant_id, lemon_squeezy_checkout_uuid, four_k, badge, sort_order')
       .order('sort_order')
       .then(({ data }) => {
         setList((data || []) as PricingPack[]);
@@ -44,6 +44,7 @@ export default function AdminPricing() {
         artist_styles_count: row.artist_styles_count ?? 40,
         paddle_product_id: row.paddle_product_id?.trim() || null,
         lemon_squeezy_variant_id: row.lemon_squeezy_variant_id?.trim() || null,
+        lemon_squeezy_checkout_uuid: row.lemon_squeezy_checkout_uuid?.trim() || null,
         four_k: row.four_k,
         badge: row.badge || null,
         sort_order: row.sort_order,
@@ -68,6 +69,7 @@ export default function AdminPricing() {
         artist_styles_count: 40,
         paddle_product_id: null,
         lemon_squeezy_variant_id: null,
+        lemon_squeezy_checkout_uuid: null,
         four_k: false,
         badge: null,
         sort_order: list.length,
@@ -182,13 +184,23 @@ export default function AdminPricing() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Lemon Squeezy variant ID (checkout ve webhook eşlemesi)</label>
+                <label className="block text-xs text-gray-500 mb-1">Lemon Squeezy checkout UUID (ödeme linki – Share linkteki ID)</label>
+                <input
+                  type="text"
+                  value={row.lemon_squeezy_checkout_uuid ?? ''}
+                  onChange={(e) => update(row.id, 'lemon_squeezy_checkout_uuid', e.target.value.trim() || null)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono"
+                  placeholder="örn. 0a6a878f-35cd-498a-b918-67bc5a26d585"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Lemon Squeezy variant ID (sayısal – webhook eşlemesi)</label>
                 <input
                   type="text"
                   value={row.lemon_squeezy_variant_id ?? ''}
                   onChange={(e) => update(row.id, 'lemon_squeezy_variant_id', e.target.value.trim() || null)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono"
-                  placeholder="örn. 123456"
+                  placeholder="örn. 1327319"
                 />
               </div>
               <div>

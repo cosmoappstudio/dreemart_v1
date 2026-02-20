@@ -371,6 +371,9 @@ CREATE POLICY "Admins can read lemon_squeezy_sales" ON lemon_squeezy_sales FOR S
 DROP POLICY IF EXISTS "Service role full lemon_squeezy_sales" ON lemon_squeezy_sales;
 CREATE POLICY "Service role full lemon_squeezy_sales" ON lemon_squeezy_sales FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
 
+-- ========== 022_lemon_squeezy_checkout_uuid ==========
+ALTER TABLE pricing_packs ADD COLUMN IF NOT EXISTS lemon_squeezy_checkout_uuid TEXT;
+
 -- ========== Admin ataması (ilk Google girişinden SONRA çalıştır) ==========
 -- Bu satırı ilk kez gokturk4business@gmail.com ile giriş yaptıktan sonra
 -- Supabase SQL Editor'da ayrı bir sorgu olarak çalıştır:

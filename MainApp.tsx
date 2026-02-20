@@ -79,7 +79,7 @@ export default function MainApp() {
   const [showSuccessView, setShowSuccessView] = useState(false);
   const [selectedDreamStart, setSelectedDreamStart] = useState<DreamRecord | null>(null);
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
-  const [creditPacksFromDb, setCreditPacksFromDb] = useState<{ id: string; name: string; price: string; credits_text: string; badge: string | null; lemon_squeezy_variant_id?: string | null }[]>([]);
+  const [creditPacksFromDb, setCreditPacksFromDb] = useState<{ id: string; name: string; price: string; credits_text: string; badge: string | null; lemon_squeezy_variant_id?: string | null; lemon_squeezy_checkout_uuid?: string | null }[]>([]);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const language = (profile?.language || 'tr') as Language;
@@ -133,8 +133,8 @@ export default function MainApp() {
   // Kredi paketleri: Admin/landing ile aynı kaynak (pricing_packs); Lemon Squeezy variant_id checkout için
   useEffect(() => {
     if (!supabase) return;
-    supabase.from('pricing_packs').select('id, name, price, credits_text, badge, sort_order, lemon_squeezy_variant_id').order('sort_order').then(({ data }) => {
-      if (data?.length) setCreditPacksFromDb(data as { id: string; name: string; price: string; credits_text: string; badge: string | null; lemon_squeezy_variant_id?: string | null }[]);
+    supabase.from('pricing_packs').select('id, name, price, credits_text, badge, sort_order, lemon_squeezy_variant_id, lemon_squeezy_checkout_uuid').order('sort_order').then(({ data }) => {
+      if (data?.length) setCreditPacksFromDb(data as { id: string; name: string; price: string; credits_text: string; badge: string | null; lemon_squeezy_variant_id?: string | null; lemon_squeezy_checkout_uuid?: string | null }[]);
     });
   }, []);
 
@@ -197,10 +197,11 @@ export default function MainApp() {
     setCheckoutError(null);
     const pack = creditPacksFromDb.find((p) => p.id === planId);
     const storeUrl = import.meta.env.VITE_LEMONSQUEEZY_STORE_URL as string | undefined;
-    const variantId = pack && 'lemon_squeezy_variant_id' in pack ? pack.lemon_squeezy_variant_id : null;
-    if (storeUrl && variantId) {
+    const checkoutUuid = pack && 'lemon_squeezy_checkout_uuid' in pack ? pack.lemon_squeezy_checkout_uuid : null;
+    const variantOrUuid = (checkoutUuid?.trim() || (pack && 'lemon_squeezy_variant_id' in pack ? pack.lemon_squeezy_variant_id : null))?.trim();
+    if (storeUrl && variantOrUuid) {
       const base = storeUrl.replace(/\/$/, '');
-      const url = `${base}/checkout/buy/${variantId}?checkout[custom][user_id]=${encodeURIComponent(user?.id || '')}`;
+      const url = `${base}/checkout/buy/${variantOrUuid}?checkout[custom][user_id]=${encodeURIComponent(user?.id || '')}`;
       const w = window.open(url);
       if (w) setShowPaywall(false);
       else setCheckoutError(language === 'tr' ? 'Popup engellendi. Lütfen tarayıcıda açılır pencerelere izin verin.' : 'Popup blocked. Please allow popups for this site.');
