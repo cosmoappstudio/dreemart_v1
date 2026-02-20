@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Loader2, TrendingUp, DollarSign, Package, Globe, Calendar, Filter } from 'lucide-react';
+import { Loader2, TrendingUp, DollarSign, Package, Globe, Calendar, Filter, Mail, Banknote, X } from 'lucide-react';
 
 interface SaleRow {
   id: string;
@@ -17,15 +17,20 @@ interface SaleRow {
   profiles?: { email: string | null; full_name: string | null } | null;
 }
 
-type DateRangeKey = '7' | '30' | '90' | 'all' | 'custom';
+type DateRangeKey = '7' | '14' | '30' | '90' | '180' | '365' | 'all' | 'custom';
 
 const DATE_RANGE_OPTIONS: { value: DateRangeKey; label: string }[] = [
   { value: '7', label: 'Son 7 gün' },
+  { value: '14', label: 'Son 14 gün' },
   { value: '30', label: 'Son 30 gün' },
   { value: '90', label: 'Son 90 gün' },
+  { value: '180', label: 'Son 6 ay' },
+  { value: '365', label: 'Son 1 yıl' },
   { value: 'all', label: 'Tümü' },
   { value: 'custom', label: 'Özel tarih' },
 ];
+
+const LIMIT_OPTIONS = [50, 100, 200, 500, 1000] as const;
 
 /** Paddle amounts are in smallest currency unit (cents for USD). Convert to display value. */
 function parseAmount(amount: string | null, currency: string): number {
@@ -44,6 +49,7 @@ function formatAmount(value: number, currency: string): string {
 
 export default function AdminSales() {
   const [sales, setSales] = useState<SaleRow[]>([]);
+  const [filterOptions, setFilterOptions] = useState<{ packs: string[]; countries: string[]; currencies: string[] }>({ packs: [], countries: [], currencies: [] });
   const [loading, setLoading] = useState(true);
   const [noBackend, setNoBackend] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeKey>('30');
@@ -53,6 +59,11 @@ export default function AdminSales() {
     return d.toISOString().slice(0, 10);
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [filterPack, setFilterPack] = useState<string>('');
+  const [filterCountry, setFilterCountry] = useState<string>('');
+  const [filterCurrency, setFilterCurrency] = useState<string>('');
+  const [filterCustomer, setFilterCustomer] = useState('');
+  const [limit, setLimit] = useState(200);
 
   useEffect(() => {
     if (!supabase) {
@@ -68,7 +79,8 @@ export default function AdminSales() {
       toDate = dateTo ? `${dateTo}T23:59:59Z` : null;
     } else if (dateRange !== 'all') {
       const d = new Date();
-      d.setDate(d.getDate() - parseInt(dateRange, 10));
+      const days = parseInt(dateRange, 10);
+      d.setDate(d.getDate() - (isNaN(days) ? 30 : days));
       fromDate = d.toISOString();
       toDate = new Date().toISOString();
     }
@@ -81,19 +93,68 @@ export default function AdminSales() {
         profiles(email, full_name)
       `)
       .order('created_at', { ascending: false })
-      .limit(200);
+      .limit(limit);
     if (fromDate) q = q.gte('created_at', fromDate);
     if (toDate) q = q.lte('created_at', toDate);
+    if (filterPack) q = q.eq('pack_name', filterPack);
+    if (filterCountry) q = q.eq('country_code', filterCountry);
+    if (filterCurrency) q = q.eq('currency_code', filterCurrency);
+    if (filterCustomer.trim()) {
+      q = q.ilike('customer_email', `%${filterCustomer.trim()}%`);
+    }
 
     q.then(({ data, error }) => {
       if (error) {
         setSales([]);
       } else {
-        setSales((data ?? []) as SaleRow[]);
+        setSales((data ?? []) as unknown as SaleRow[]);
       }
       setLoading(false);
     });
+  }, [dateRange, dateFrom, dateTo, filterPack, filterCountry, filterCurrency, filterCustomer, limit]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let fromDate: string | null = null;
+    let toDate: string | null = null;
+    if (dateRange === 'custom') {
+      fromDate = dateFrom ? `${dateFrom}T00:00:00Z` : null;
+      toDate = dateTo ? `${dateTo}T23:59:59Z` : null;
+    } else if (dateRange !== 'all') {
+      const d = new Date();
+      const days = parseInt(dateRange, 10);
+      d.setDate(d.getDate() - (isNaN(days) ? 30 : days));
+      fromDate = d.toISOString();
+      toDate = new Date().toISOString();
+    }
+    let q = supabase.from('paddle_sales').select('pack_name, country_code, currency_code').limit(2000);
+    if (fromDate) q = q.gte('created_at', fromDate);
+    if (toDate) q = q.lte('created_at', toDate);
+    q.then(({ data }) => {
+      const packs = new Set<string>();
+      const countries = new Set<string>();
+      const currencies = new Set<string>();
+      (data ?? []).forEach((r: { pack_name?: string; country_code?: string; currency_code?: string }) => {
+        if (r.pack_name) packs.add(r.pack_name);
+        if (r.country_code) countries.add(r.country_code);
+        if (r.currency_code) currencies.add(r.currency_code);
+      });
+      setFilterOptions({
+        packs: Array.from(packs).sort(),
+        countries: Array.from(countries).sort(),
+        currencies: Array.from(currencies).sort(),
+      });
+    });
   }, [dateRange, dateFrom, dateTo]);
+
+  const clearFilters = () => {
+    setFilterPack('');
+    setFilterCountry('');
+    setFilterCurrency('');
+    setFilterCustomer('');
+  };
+
+  const hasActiveFilters = filterPack || filterCountry || filterCurrency || filterCustomer.trim();
 
   const totalRevenue = sales.reduce((sum, s) => sum + parseAmount(s.amount, s.currency_code), 0);
   const totalSales = sales.length;
@@ -140,17 +201,28 @@ export default function AdminSales() {
 
       {/* Filtreler */}
       <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-        <div className="flex items-center gap-2 text-gray-300 text-sm font-medium mb-3">
-          <Filter className="w-4 h-4" />
-          Tarih Aralığı
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <div className="flex items-center gap-2 text-gray-300 text-sm font-medium">
+            <Filter className="w-4 h-4" />
+            Filtreler
+          </div>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+            >
+              <X className="w-3.5 h-3.5" /> Filtreleri temizle
+            </button>
+          )}
         </div>
-        <div className="flex flex-wrap gap-4 items-end">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Aralık</label>
+            <label className="block text-xs text-gray-500 mb-1">Tarih Aralığı</label>
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as DateRangeKey)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
             >
               {DATE_RANGE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -165,7 +237,7 @@ export default function AdminSales() {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
                 />
               </div>
               <div>
@@ -174,11 +246,72 @@ export default function AdminSales() {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
                 />
               </div>
             </>
           )}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1 flex items-center gap-1"><Package className="w-3 h-3" /> Paket</label>
+            <select
+              value={filterPack}
+              onChange={(e) => setFilterPack(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+            >
+              <option value="">Tüm paketler</option>
+              {filterOptions.packs.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1 flex items-center gap-1"><Globe className="w-3 h-3" /> Ülke</label>
+            <select
+              value={filterCountry}
+              onChange={(e) => setFilterCountry(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+            >
+              <option value="">Tüm ülkeler</option>
+              {filterOptions.countries.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1 flex items-center gap-1"><Banknote className="w-3 h-3" /> Para birimi</label>
+            <select
+              value={filterCurrency}
+              onChange={(e) => setFilterCurrency(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+            >
+              <option value="">Tüm para birimleri</option>
+              {filterOptions.currencies.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1 flex items-center gap-1"><Mail className="w-3 h-3" /> Müşteri (e-posta)</label>
+            <input
+              type="text"
+              value={filterCustomer}
+              onChange={(e) => setFilterCustomer(e.target.value)}
+              placeholder="Ara..."
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Maks. kayıt</label>
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+            >
+              {LIMIT_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -233,7 +366,7 @@ export default function AdminSales() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(byPack).map(([name, { count, revenue }]) => (
+                  {(Object.entries(byPack) as [string, { count: number; revenue: number }][]).map(([name, { count, revenue }]) => (
                     <tr key={name} className="border-b border-gray-800/50">
                       <td className="py-2 text-white">{name}</td>
                       <td className="py-2 text-right text-gray-300">{count}</td>
@@ -265,7 +398,7 @@ export default function AdminSales() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(byCountry)
+                  {(Object.entries(byCountry) as [string, { count: number; revenue: number }][])
                     .sort((a, b) => b[1].revenue - a[1].revenue)
                     .map(([code, { count, revenue }]) => (
                       <tr key={code} className="border-b border-gray-800/50">
