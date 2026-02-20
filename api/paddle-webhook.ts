@@ -58,9 +58,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let packName: string | null = null;
     if (productIdStr) {
       const { data: byPaddle } = await admin.from('pricing_packs').select('id, credits_amount, name').eq('paddle_product_id', productIdStr).maybeSingle();
-      const pack = byPaddle ?? (productIdStr.match(/^[0-9a-f-]{36}$/i)
-        ? (await admin.from('pricing_packs').select('id, credits_amount, name').eq('id', productIdStr).maybeSingle()).data
-        : null;
+      const byId =
+        productIdStr.match(/^[0-9a-f-]{36}$/i)
+          ? (await admin.from('pricing_packs').select('id, credits_amount, name').eq('id', productIdStr).maybeSingle()).data
+          : null;
+      const pack = byPaddle ?? byId;
       if (pack?.credits_amount != null && pack.credits_amount > 0) {
         credits = pack.credits_amount;
         packId = pack.id;
