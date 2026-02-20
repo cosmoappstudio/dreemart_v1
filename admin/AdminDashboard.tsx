@@ -78,6 +78,7 @@ export default function AdminDashboard() {
     setLoading(true);
 
     (async () => {
+      // Veri sorgusu: tüm sütunlar + ilişkiler (count için ayrı builder kullanıyoruz, yoksa select eziliyor)
       let baseDreams = supabase.from('dreams').select(`
         id, created_at, prompt, user_id, image_url, moderation_status, artist_id,
         artists(name),
@@ -86,6 +87,11 @@ export default function AdminDashboard() {
       if (fromDate) baseDreams = baseDreams.gte('created_at', fromDate);
       if (toDate) baseDreams = baseDreams.lte('created_at', toDate);
       if (filterArtistId) baseDreams = baseDreams.eq('artist_id', filterArtistId);
+
+      let countDreams = supabase.from('dreams').select('id', { count: 'exact', head: true });
+      if (fromDate) countDreams = countDreams.gte('created_at', fromDate);
+      if (toDate) countDreams = countDreams.lte('created_at', toDate);
+      if (filterArtistId) countDreams = countDreams.eq('artist_id', filterArtistId);
 
       let salesMain = supabase.from('lemon_squeezy_sales').select('id, amount, currency_code');
       if (fromDate) salesMain = salesMain.gte('created_at', fromDate);
@@ -109,7 +115,7 @@ export default function AdminDashboard() {
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('dreams').select('id', { count: 'exact', head: true }),
         supabase.from('artists').select('id', { count: 'exact', head: true }),
-        baseDreams.select('id', { count: 'exact', head: true }),
+        countDreams,
         baseDreams.order('created_at', { ascending: false }).limit(50),
         supabase.from('pricing_packs').select('id, name'),
         salesMain,
@@ -133,11 +139,7 @@ export default function AdminDashboard() {
       const revMain = mainSales.reduce((s, x) => s + parseAmount(x.amount, x.currency_code), 0);
       const revCompare = compareSales.reduce((s, x) => s + parseAmount(x.amount, x.currency_code), 0);
 
-      if (recent.error) console.error('Dashboard dreams query error:', recent.error);
-      const rawRows = recent.data ?? [];
-      if (rawRows.length > 0) console.log('Dashboard recent dream (first row keys):', Object.keys(rawRows[0]), rawRows[0]);
-
-      let recentData = rawRows as RecentDream[];
+      let recentData = (recent.data ?? []) as RecentDream[];
       if (filterPackId) {
         recentData = recentData.filter((x) => getProfileFromDream(x)?.last_purchased_pack_id === filterPackId);
       }
