@@ -18,16 +18,15 @@ interface Stats {
 
 interface RecentDream {
   id: string;
-  created_at: string;
-  prompt: string;
-  user_id: string;
-  image_url: string | null;
-  moderation_status: string;
-  artists: { name: string } | null;
-  profiles: { email: string | null; full_name: string | null; last_purchased_pack_id: string | null } | null;
+  created_at?: string;
+  prompt?: string;
+  user_id?: string;
+  image_url?: string | null;
+  moderation_status?: string;
+  artist_id?: string;
+  artists?: { name: string } | { name: string }[] | null;
+  profiles?: { email: string | null; full_name: string | null; last_purchased_pack_id: string | null } | Array<{ email: string | null; full_name: string | null; last_purchased_pack_id: string | null }> | null;
 }
-
-type ModerationFilter = 'all' | 'approved' | 'pending' | 'rejected';
 
 function parseAmount(amount: string | null, currency: string): number {
   if (!amount) return 0;
@@ -35,13 +34,6 @@ function parseAmount(amount: string | null, currency: string): number {
   if (isNaN(n)) return 0;
   return (currency && ['JPY', 'KRW', 'VND'].includes(currency.toUpperCase())) ? n : n / 100;
 }
-
-const MODERATION_OPTIONS: { value: ModerationFilter; label: string }[] = [
-  { value: 'all', label: 'Tümü' },
-  { value: 'approved', label: 'Onaylı' },
-  { value: 'pending', label: 'Beklemede' },
-  { value: 'rejected', label: 'Reddedilen' },
-];
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats>({
@@ -54,7 +46,11 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [noBackend, setNoBackend] = useState(false);
   const [dateRangeValue, setDateRangeValue] = useState<DateRangeValue>(() => defaultDateRangeValue(true));
-  const [moderationFilter, setModerationFilter] = useState<ModerationFilter>('all');
+  const [filterCountry, setFilterCountry] = useState<string>('');
+  const [filterPackId, setFilterPackId] = useState<string>('');
+  const [filterArtistId, setFilterArtistId] = useState<string>('');
+  const [artistList, setArtistList] = useState<{ id: string; name: string }[]>([]);
+  const [countryList, setCountryList] = useState<string[]>([]);
 
   const { from: fromDate, to: toDate, compareFrom, compareTo } = getDateRangeISO(dateRangeValue);
 
@@ -70,32 +66,37 @@ export default function AdminDashboard() {
 
     (async () => {
       let baseDreams = supabase.from('dreams').select(`
-        id, created_at, prompt, user_id, image_url, moderation_status,
+        id, created_at, prompt, user_id, image_url, moderation_status, artist_id,
         artists(name),
         profiles(email, full_name, last_purchased_pack_id)
       `, { count: 'exact' });
       if (fromDate) baseDreams = baseDreams.gte('created_at', fromDate);
       if (toDate) baseDreams = baseDreams.lte('created_at', toDate);
-      const dreamsWithMod = moderationFilter !== 'all' ? baseDreams.eq('moderation_status', moderationFilter) : baseDreams;
+      if (filterArtistId) baseDreams = baseDreams.eq('artist_id', filterArtistId);
 
       let salesMain = supabase.from('lemon_squeezy_sales').select('id, amount, currency_code');
       if (fromDate) salesMain = salesMain.gte('created_at', fromDate);
       if (toDate) salesMain = salesMain.lte('created_at', toDate);
+      if (filterCountry) salesMain = salesMain.eq('country_code', filterCountry);
+      if (filterPackId) salesMain = salesMain.eq('pack_id', filterPackId);
 
       let salesCompare = supabase.from('lemon_squeezy_sales').select('id, amount, currency_code');
       if (dateRangeValue.compareEnabled && compareFrom && compareTo) {
         salesCompare = salesCompare.gte('created_at', compareFrom).lte('created_at', compareTo);
+        if (filterCountry) salesCompare = salesCompare.eq('country_code', filterCountry);
+        if (filterPackId) salesCompare = salesCompare.eq('pack_id', filterPackId);
       }
 
       const [
         u, d, a, countInPeriod, recent, packsRes,
         salesMainRes, salesCompareRes,
         refundsMain, refundsCompareRes,
+        artistsRes, countriesRes,
       ] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('dreams').select('id', { count: 'exact', head: true }),
         supabase.from('artists').select('id', { count: 'exact', head: true }),
-        dreamsWithMod.select('id', { count: 'exact', head: true }),
+        baseDreams.select('id', { count: 'exact', head: true }),
         baseDreams.order('created_at', { ascending: false }).limit(50),
         supabase.from('pricing_packs').select('id, name'),
         salesMain,
@@ -104,10 +105,15 @@ export default function AdminDashboard() {
         dateRangeValue.compareEnabled && compareFrom && compareTo
           ? supabase.from('credit_transactions').select('id', { count: 'exact', head: true }).eq('reason', 'refund').gte('created_at', compareFrom).lte('created_at', compareTo)
           : Promise.resolve({ count: 0 }),
+        supabase.from('artists').select('id, name').order('name'),
+        supabase.from('lemon_squeezy_sales').select('country_code'),
       ]);
 
       const packs = (packsRes.data ?? []) as { id: string; name: string }[];
       setPackNames(Object.fromEntries(packs.map((p) => [p.id, p.name])));
+      setArtistList((artistsRes.data ?? []) as { id: string; name: string }[]);
+      const countryRows = (countriesRes.data ?? []) as { country_code: string | null }[];
+      setCountryList([...new Set(countryRows.map((r) => r.country_code).filter(Boolean) as string[])].sort());
 
       const mainSales = (salesMainRes.data ?? []) as { amount: string | null; currency_code: string }[];
       const compareSales = (salesCompareRes.data ?? []) as { amount: string | null; currency_code: string }[];
@@ -115,8 +121,11 @@ export default function AdminDashboard() {
       const revCompare = compareSales.reduce((s, x) => s + parseAmount(x.amount, x.currency_code), 0);
 
       let recentData = (recent.data ?? []) as RecentDream[];
-      if (moderationFilter !== 'all') {
-        recentData = recentData.filter((x) => x.moderation_status === moderationFilter);
+      if (filterPackId) {
+        recentData = recentData.filter((x) => {
+          const p = Array.isArray(x.profiles) ? x.profiles[0] : x.profiles;
+          return p?.last_purchased_pack_id === filterPackId;
+        });
       }
 
       setStats({
@@ -134,7 +143,7 @@ export default function AdminDashboard() {
       setRecentDreams(recentData);
       setLoading(false);
     })();
-  }, [fromDate, toDate, compareFrom, compareTo, dateRangeValue.compareEnabled, moderationFilter]);
+  }, [fromDate, toDate, compareFrom, compareTo, dateRangeValue.compareEnabled, filterCountry, filterPackId, filterArtistId]);
 
   const formatMoney = (n: number) => (n >= 0 ? `₺${n.toFixed(2)}` : `-₺${(-n).toFixed(2)}`);
   const delta = (curr: number, prev: number) => (prev === 0 ? (curr === 0 ? 0 : 100) : Math.round(((curr - prev) / prev) * 100));
@@ -193,16 +202,41 @@ export default function AdminDashboard() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Moderasyon</label>
+              <label className="block text-xs text-gray-500 mb-1">Ülke</label>
               <select
-                value={moderationFilter}
-                onChange={(e) => setModerationFilter(e.target.value as ModerationFilter)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50"
+                value={filterCountry}
+                onChange={(e) => setFilterCountry(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50 min-w-[140px]"
               >
-                {MODERATION_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
+                <option value="">Tümü</option>
+                {countryList.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Paket</label>
+              <select
+                value={filterPackId}
+                onChange={(e) => setFilterPackId(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50 min-w-[160px]"
+              >
+                <option value="">Tümü</option>
+                {Object.entries(packNames).map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Ressam</label>
+              <select
+                value={filterArtistId}
+                onChange={(e) => setFilterArtistId(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50 min-w-[160px]"
+              >
+                <option value="">Tümü</option>
+                {artistList.map((ar) => (
+                  <option key={ar.id} value={ar.id}>{ar.name}</option>
                 ))}
               </select>
             </div>
@@ -210,7 +244,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {cards.map(({ label, value, icon: Icon, color, compare, sub }) => (
           <div key={label} className={`rounded-xl border bg-gradient-to-br ${color} p-5`}>
             <div className="flex items-start justify-between">
@@ -269,36 +303,54 @@ export default function AdminDashboard() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="text-sm text-gray-300 max-w-[200px] truncate" title={dream.prompt}>
+                      <p className="text-sm text-gray-300 max-w-[200px] truncate" title={dream.prompt ?? ''}>
                         {dream.prompt || '-'}
                       </p>
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm text-gray-300">
-                        <span className="font-medium text-white">{dream.profiles?.full_name || dream.profiles?.email || '-'}</span>
-                        {dream.profiles?.email && dream.profiles?.full_name && (
-                          <div className="text-xs text-gray-500 truncate max-w-[140px]" title={dream.profiles.email}>{dream.profiles.email}</div>
-                        )}
+                        {(() => {
+                          const p = Array.isArray(dream.profiles) ? dream.profiles[0] : dream.profiles;
+                          return (
+                            <>
+                              <span className="font-medium text-white">{p?.full_name || p?.email || '-'}</span>
+                              {p?.email && p?.full_name && (
+                                <div className="text-xs text-gray-500 truncate max-w-[140px]" title={p.email}>{p.email}</div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-300">{dream.artists?.name ?? '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-300">
+                      {(() => {
+                        const a = Array.isArray(dream.artists) ? dream.artists[0] : dream.artists;
+                        return a?.name ?? '-';
+                      })()}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-400">
-                      {dream.profiles?.last_purchased_pack_id ? (packNames[dream.profiles.last_purchased_pack_id] ?? '-') : '-'}
+                      {(() => {
+                        const p = Array.isArray(dream.profiles) ? dream.profiles[0] : dream.profiles;
+                        return p?.last_purchased_pack_id ? (packNames[p.last_purchased_pack_id] ?? '-') : '-';
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                      {new Date(dream.created_at).toLocaleString('tr-TR')}
+                      {dream.created_at ? (() => {
+                        const d = new Date(dream.created_at);
+                        return isNaN(d.getTime()) ? '-' : d.toLocaleString('tr-TR');
+                      })() : '-'}
                     </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex px-2 py-0.5 rounded text-xs ${
-                          dream.moderation_status === 'approved'
+                          (dream.moderation_status ?? '') === 'approved'
                             ? 'bg-emerald-500/20 text-emerald-400'
-                            : dream.moderation_status === 'pending'
+                            : (dream.moderation_status ?? '') === 'pending'
                             ? 'bg-amber-500/20 text-amber-400'
                             : 'bg-red-500/20 text-red-400'
                         }`}
                       >
-                        {dream.moderation_status}
+                        {dream.moderation_status || '-'}
                       </span>
                     </td>
                   </tr>
