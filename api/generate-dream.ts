@@ -38,6 +38,21 @@ function buildInterpretationInput(_preset: string, prompt: string): Record<strin
   return { prompt };
 }
 
+async function persistImageToStorage(admin: ReturnType<typeof getSupabaseAdmin>, replicateUrl: string): Promise<string> {
+  const res = await fetch(replicateUrl);
+  if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
+  const buffer = await res.arrayBuffer();
+  const ext = replicateUrl.includes('.webp') ? 'webp' : replicateUrl.includes('.jpg') || replicateUrl.includes('.jpeg') ? 'jpg' : 'png';
+  const path = `dreams/${crypto.randomUUID()}.${ext}`;
+  const { error } = await admin.storage.from('dream-images').upload(path, buffer, {
+    contentType: res.headers.get('content-type') || `image/${ext}`,
+    upsert: false,
+  });
+  if (error) throw new Error(`Storage upload failed: ${error.message}`);
+  const { data } = admin.storage.from('dream-images').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 function extractImageUrl(output: unknown): string {
   if (typeof output === 'string' && (output.startsWith('http') || output.startsWith('https'))) return output;
   if (Array.isArray(output) && output[0]) {
@@ -108,10 +123,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const input = buildImageInput(imageConfig.input_preset, imagePrompt, imageConfig.input_extra);
     const output = await replicate.run(imageConfig.model_identifier as `${string}/${string}`, { input });
-    imageUrl = extractImageUrl(output);
-    if (!imageUrl) throw new Error('No image URL from Replicate');
+    const replicateUrl = extractImageUrl(output);
+    if (!replicateUrl) throw new Error('No image URL from Replicate');
+    imageUrl = await persistImageToStorage(admin, replicateUrl);
   } catch (e) {
-    console.error('Replicate image error:', e);
+    console.error('Replicate/image error:', e);
     return res.status(500).json({ error: 'Image generation failed' });
   }
 
