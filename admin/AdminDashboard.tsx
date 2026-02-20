@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Users, Image, Palette, TrendingUp, Calendar, Filter } from 'lucide-react';
+import { Users, Image, Palette, TrendingUp, Calendar, Filter, DollarSign, Package, RotateCcw } from 'lucide-react';
+import { DateRangePicker, defaultDateRangeValue, getDateRangeISO, type DateRangeValue } from './DateRangePicker';
 
 interface Stats {
   users: number;
   dreams: number;
   artists: number;
   dreamsInPeriod: number;
+  revenue: number;
+  packagePurchases: number;
+  refunds: number;
+  revenueCompare: number;
+  packagePurchasesCompare: number;
+  refundsCompare: number;
 }
 
 interface RecentDream {
@@ -20,16 +27,14 @@ interface RecentDream {
   profiles: { email: string | null; full_name: string | null; last_purchased_pack_id: string | null } | null;
 }
 
-type DateRangeKey = '7' | '30' | '90' | 'all' | 'custom';
 type ModerationFilter = 'all' | 'approved' | 'pending' | 'rejected';
 
-const DATE_RANGE_OPTIONS: { value: DateRangeKey; label: string }[] = [
-  { value: '7', label: 'Son 7 gün' },
-  { value: '30', label: 'Son 30 gün' },
-  { value: '90', label: 'Son 90 gün' },
-  { value: 'all', label: 'Tümü' },
-  { value: 'custom', label: 'Özel tarih' },
-];
+function parseAmount(amount: string | null, currency: string): number {
+  if (!amount) return 0;
+  const n = parseFloat(String(amount).replace(/[^0-9.-]/g, ''));
+  if (isNaN(n)) return 0;
+  return (currency && ['JPY', 'KRW', 'VND'].includes(currency.toUpperCase())) ? n : n / 100;
+}
 
 const MODERATION_OPTIONS: { value: ModerationFilter; label: string }[] = [
   { value: 'all', label: 'Tümü' },
@@ -38,42 +43,30 @@ const MODERATION_OPTIONS: { value: ModerationFilter; label: string }[] = [
   { value: 'rejected', label: 'Reddedilen' },
 ];
 
-function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats>({ users: 0, dreams: 0, artists: 0, dreamsInPeriod: 0 });
+  const [stats, setStats] = useState<Stats>({
+    users: 0, dreams: 0, artists: 0, dreamsInPeriod: 0,
+    revenue: 0, packagePurchases: 0, refunds: 0,
+    revenueCompare: 0, packagePurchasesCompare: 0, refundsCompare: 0,
+  });
   const [recentDreams, setRecentDreams] = useState<RecentDream[]>([]);
   const [packNames, setPackNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [noBackend, setNoBackend] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRangeKey>('7');
-  const [dateFrom, setDateFrom] = useState(toDateStr(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)));
-  const [dateTo, setDateTo] = useState(toDateStr(new Date()));
+  const [dateRangeValue, setDateRangeValue] = useState<DateRangeValue>(() => defaultDateRangeValue(true));
   const [moderationFilter, setModerationFilter] = useState<ModerationFilter>('all');
+
+  const { from: fromDate, to: toDate, compareFrom, compareTo } = getDateRangeISO(dateRangeValue);
 
   useEffect(() => {
     if (!supabase) {
-      setStats({ users: 12, dreams: 48, artists: 7, dreamsInPeriod: 14 });
+      setStats((s) => ({ ...s, users: 12, dreams: 48, artists: 7, dreamsInPeriod: 14 }));
       setRecentDreams([]);
       setNoBackend(true);
       setLoading(false);
       return;
     }
     setLoading(true);
-    const now = new Date();
-    let fromDate: string | null = null;
-    let toDate: string | null = null;
-    if (dateRange === 'custom') {
-      fromDate = dateFrom ? new Date(dateFrom + 'T00:00:00').toISOString() : null;
-      toDate = dateTo ? new Date(dateTo + 'T23:59:59').toISOString() : null;
-    } else if (dateRange !== 'all') {
-      const d = new Date(now);
-      d.setDate(d.getDate() - parseInt(dateRange, 10));
-      fromDate = d.toISOString();
-      toDate = now.toISOString();
-    }
 
     (async () => {
       let baseDreams = supabase.from('dreams').select(`
@@ -85,17 +78,41 @@ export default function AdminDashboard() {
       if (toDate) baseDreams = baseDreams.lte('created_at', toDate);
       const dreamsWithMod = moderationFilter !== 'all' ? baseDreams.eq('moderation_status', moderationFilter) : baseDreams;
 
-      const [u, d, a, countInPeriod, recent, packsRes] = await Promise.all([
+      let salesMain = supabase.from('lemon_squeezy_sales').select('id, amount, currency_code');
+      if (fromDate) salesMain = salesMain.gte('created_at', fromDate);
+      if (toDate) salesMain = salesMain.lte('created_at', toDate);
+
+      let salesCompare = supabase.from('lemon_squeezy_sales').select('id, amount, currency_code');
+      if (dateRangeValue.compareEnabled && compareFrom && compareTo) {
+        salesCompare = salesCompare.gte('created_at', compareFrom).lte('created_at', compareTo);
+      }
+
+      const [
+        u, d, a, countInPeriod, recent, packsRes,
+        salesMainRes, salesCompareRes,
+        refundsMain, refundsCompareRes,
+      ] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('dreams').select('id', { count: 'exact', head: true }),
         supabase.from('artists').select('id', { count: 'exact', head: true }),
         dreamsWithMod.select('id', { count: 'exact', head: true }),
         baseDreams.order('created_at', { ascending: false }).limit(50),
         supabase.from('pricing_packs').select('id, name'),
+        salesMain,
+        dateRangeValue.compareEnabled && compareFrom && compareTo ? salesCompare : Promise.resolve({ data: [] }),
+        supabase.from('credit_transactions').select('id', { count: 'exact', head: true }).eq('reason', 'refund').gte('created_at', fromDate).lte('created_at', toDate),
+        dateRangeValue.compareEnabled && compareFrom && compareTo
+          ? supabase.from('credit_transactions').select('id', { count: 'exact', head: true }).eq('reason', 'refund').gte('created_at', compareFrom).lte('created_at', compareTo)
+          : Promise.resolve({ count: 0 }),
       ]);
 
       const packs = (packsRes.data ?? []) as { id: string; name: string }[];
       setPackNames(Object.fromEntries(packs.map((p) => [p.id, p.name])));
+
+      const mainSales = (salesMainRes.data ?? []) as { amount: string | null; currency_code: string }[];
+      const compareSales = (salesCompareRes.data ?? []) as { amount: string | null; currency_code: string }[];
+      const revMain = mainSales.reduce((s, x) => s + parseAmount(x.amount, x.currency_code), 0);
+      const revCompare = compareSales.reduce((s, x) => s + parseAmount(x.amount, x.currency_code), 0);
 
       let recentData = (recent.data ?? []) as RecentDream[];
       if (moderationFilter !== 'all') {
@@ -107,22 +124,30 @@ export default function AdminDashboard() {
         dreams: d.count ?? 0,
         artists: a.count ?? 0,
         dreamsInPeriod: countInPeriod.count ?? 0,
+        revenue: revMain,
+        packagePurchases: mainSales.length,
+        refunds: refundsMain.count ?? 0,
+        revenueCompare: revCompare,
+        packagePurchasesCompare: compareSales.length,
+        refundsCompare: (refundsCompareRes as { count?: number })?.count ?? 0,
       });
       setRecentDreams(recentData);
       setLoading(false);
     })();
-  }, [dateRange, dateFrom, dateTo, moderationFilter]);
+  }, [fromDate, toDate, compareFrom, compareTo, dateRangeValue.compareEnabled, moderationFilter]);
+
+  const formatMoney = (n: number) => (n >= 0 ? `₺${n.toFixed(2)}` : `-₺${(-n).toFixed(2)}`);
+  const delta = (curr: number, prev: number) => (prev === 0 ? (curr === 0 ? 0 : 100) : Math.round(((curr - prev) / prev) * 100));
+  const compareLabel = dateRangeValue.compareEnabled ? (dateRangeValue.compareType === 'previous_7' ? 'önceki 7 gün' : dateRangeValue.compareType === 'previous_year' ? 'önceki yıl' : 'önceki dönem') : '';
 
   const cards = [
-    { label: 'Toplam Kullanıcı', value: stats.users, icon: Users, color: 'from-indigo-500/20 to-indigo-600/10 border-indigo-500/30 text-indigo-300' },
-    { label: 'Toplam Rüya', value: stats.dreams, icon: Image, color: 'from-amber-500/20 to-amber-600/10 border-amber-500/30 text-amber-300' },
-    { label: 'Ressam Sayısı', value: stats.artists, icon: Palette, color: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-300' },
-    {
-      label: dateRange === 'custom' ? `${dateFrom || '?'} – ${dateTo || '?'}` : dateRange === 'all' ? 'Seçili Filtre' : `Son ${dateRange} gün`,
-      value: stats.dreamsInPeriod,
-      icon: TrendingUp,
-      color: 'from-purple-500/20 to-purple-600/10 border-purple-500/30 text-purple-300',
-    },
+    { label: 'Toplam Kullanıcı', value: stats.users, icon: Users, color: 'from-indigo-500/20 to-indigo-600/10 border-indigo-500/30 text-indigo-300', compare: null as number | null },
+    { label: 'Toplam Rüya', value: stats.dreams, icon: Image, color: 'from-amber-500/20 to-amber-600/10 border-amber-500/30 text-amber-300', compare: null as number | null },
+    { label: 'Ressam Sayısı', value: stats.artists, icon: Palette, color: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-300', compare: null as number | null },
+    { label: dateRangeValue.presetLabel, value: stats.dreamsInPeriod, icon: TrendingUp, color: 'from-purple-500/20 to-purple-600/10 border-purple-500/30 text-purple-300', compare: null as number | null },
+    { label: 'Gelir', value: formatMoney(stats.revenue), icon: DollarSign, color: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-300', compare: dateRangeValue.compareEnabled ? delta(stats.revenue, stats.revenueCompare) : null, sub: dateRangeValue.compareEnabled ? `${formatMoney(stats.revenueCompare)} ${compareLabel}` : undefined },
+    { label: 'Paket satın alımı', value: stats.packagePurchases, icon: Package, color: 'from-amber-500/20 to-amber-600/10 border-amber-500/30 text-amber-300', compare: dateRangeValue.compareEnabled ? delta(stats.packagePurchases, stats.packagePurchasesCompare) : null, sub: dateRangeValue.compareEnabled ? `${stats.packagePurchasesCompare} ${compareLabel}` : undefined },
+    { label: 'İadeler', value: stats.refunds, icon: RotateCcw, color: 'from-rose-500/20 to-rose-600/10 border-rose-500/30 text-rose-300', compare: dateRangeValue.compareEnabled ? delta(stats.refunds, stats.refundsCompare) : null, sub: dateRangeValue.compareEnabled ? `${stats.refundsCompare} ${compareLabel}` : undefined },
   ];
 
   if (loading && !noBackend) {
@@ -159,42 +184,14 @@ export default function AdminDashboard() {
             Filtreler
           </div>
           <div className="flex flex-wrap gap-4 items-end">
-            <div>
+            <div className="relative">
               <label className="block text-xs text-gray-500 mb-1">Tarih aralığı</label>
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value as DateRangeKey)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50"
-              >
-                {DATE_RANGE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+              <DateRangePicker
+                value={dateRangeValue}
+                onChange={setDateRangeValue}
+                triggerLabel={`${dateRangeValue.presetLabel} ${dateRangeValue.from ? new Date(dateRangeValue.from + 'T12:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : ''} – ${dateRangeValue.to ? new Date(dateRangeValue.to + 'T12:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}`}
+              />
             </div>
-            {dateRange === 'custom' && (
-              <>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Başlangıç</label>
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Bitiş</label>
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50"
-                  />
-                </div>
-              </>
-            )}
             <div>
               <label className="block text-xs text-gray-500 mb-1">Moderasyon</label>
               <select
@@ -213,15 +210,21 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {cards.map(({ label, value, icon: Icon, color }) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+        {cards.map(({ label, value, icon: Icon, color, compare, sub }) => (
           <div key={label} className={`rounded-xl border bg-gradient-to-br ${color} p-5`}>
             <div className="flex items-start justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-medium opacity-90">{label}</p>
-                <p className="text-2xl font-bold mt-1">{value}</p>
+                <p className="text-2xl font-bold mt-1 truncate">{value}</p>
+                {sub != null && <p className="text-xs opacity-80 mt-0.5">{sub}</p>}
+                {compare != null && (
+                  <p className={`text-xs font-medium mt-1 ${compare > 0 ? 'text-emerald-400' : compare < 0 ? 'text-rose-400' : 'text-gray-400'}`}>
+                    {compare > 0 ? '+' : ''}{compare}%
+                  </p>
+                )}
               </div>
-              <div className="p-2 rounded-lg bg-white/10">
+              <div className="p-2 rounded-lg bg-white/10 flex-shrink-0">
                 <Icon className="w-5 h-5" />
               </div>
             </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Loader2, TrendingUp, DollarSign, Package, Globe, Calendar, Filter, Mail, Banknote, X } from 'lucide-react';
+import { DateRangePicker, defaultDateRangeValue, getDateRangeISO, type DateRangeValue } from './DateRangePicker';
 
 interface SaleRow {
   id: string;
@@ -16,19 +17,6 @@ interface SaleRow {
   customer_email: string | null;
   profiles?: { email: string | null; full_name: string | null } | null;
 }
-
-type DateRangeKey = '7' | '14' | '30' | '90' | '180' | '365' | 'all' | 'custom';
-
-const DATE_RANGE_OPTIONS: { value: DateRangeKey; label: string }[] = [
-  { value: '7', label: 'Son 7 gün' },
-  { value: '14', label: 'Son 14 gün' },
-  { value: '30', label: 'Son 30 gün' },
-  { value: '90', label: 'Son 90 gün' },
-  { value: '180', label: 'Son 6 ay' },
-  { value: '365', label: 'Son 1 yıl' },
-  { value: 'all', label: 'Tümü' },
-  { value: 'custom', label: 'Özel tarih' },
-];
 
 const LIMIT_OPTIONS = [50, 100, 200, 500, 1000] as const;
 
@@ -52,18 +40,15 @@ export default function AdminSales() {
   const [filterOptions, setFilterOptions] = useState<{ packs: string[]; countries: string[]; currencies: string[] }>({ packs: [], countries: [], currencies: [] });
   const [loading, setLoading] = useState(true);
   const [noBackend, setNoBackend] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRangeKey>('30');
-  const [dateFrom, setDateFrom] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().slice(0, 10);
-  });
-  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dateRangeValue, setDateRangeValue] = useState<DateRangeValue>(() => defaultDateRangeValue(true));
+  const [compareStats, setCompareStats] = useState<{ revenue: number; count: number }>({ revenue: 0, count: 0 });
   const [filterPack, setFilterPack] = useState<string>('');
   const [filterCountry, setFilterCountry] = useState<string>('');
   const [filterCurrency, setFilterCurrency] = useState<string>('');
   const [filterCustomer, setFilterCustomer] = useState('');
   const [limit, setLimit] = useState(200);
+
+  const { from: fromDate, to: toDate, compareFrom, compareTo } = getDateRangeISO(dateRangeValue);
 
   useEffect(() => {
     if (!supabase) {
@@ -72,18 +57,6 @@ export default function AdminSales() {
       return;
     }
     setLoading(true);
-    let fromDate: string | null = null;
-    let toDate: string | null = null;
-    if (dateRange === 'custom') {
-      fromDate = dateFrom ? `${dateFrom}T00:00:00Z` : null;
-      toDate = dateTo ? `${dateTo}T23:59:59Z` : null;
-    } else if (dateRange !== 'all') {
-      const d = new Date();
-      const days = parseInt(dateRange, 10);
-      d.setDate(d.getDate() - (isNaN(days) ? 30 : days));
-      fromDate = d.toISOString();
-      toDate = new Date().toISOString();
-    }
 
     let q = supabase
       .from('lemon_squeezy_sales')
@@ -103,30 +76,27 @@ export default function AdminSales() {
       q = q.ilike('customer_email', `%${filterCustomer.trim()}%`);
     }
 
-    q.then(({ data, error }) => {
-      if (error) {
+    const comparePromise = dateRangeValue.compareEnabled && compareFrom && compareTo
+      ? supabase.from('lemon_squeezy_sales').select('id, amount, currency_code').gte('created_at', compareFrom).lte('created_at', compareTo)
+      : Promise.resolve({ data: [] as SaleRow[] });
+
+    Promise.all([q, comparePromise]).then(([salesRes, compareRes]) => {
+      if (salesRes.error) {
         setSales([]);
       } else {
-        setSales((data ?? []) as unknown as SaleRow[]);
+        setSales((salesRes.data ?? []) as unknown as SaleRow[]);
       }
+      const compareRows = (compareRes.data ?? []) as { amount: string | null; currency_code: string }[];
+      setCompareStats({
+        revenue: compareRows.reduce((s, x) => s + parseAmount(x.amount, x.currency_code), 0),
+        count: compareRows.length,
+      });
       setLoading(false);
     });
-  }, [dateRange, dateFrom, dateTo, filterPack, filterCountry, filterCurrency, filterCustomer, limit]);
+  }, [fromDate, toDate, compareFrom, compareTo, dateRangeValue.compareEnabled, filterPack, filterCountry, filterCurrency, filterCustomer, limit]);
 
   useEffect(() => {
     if (!supabase) return;
-    let fromDate: string | null = null;
-    let toDate: string | null = null;
-    if (dateRange === 'custom') {
-      fromDate = dateFrom ? `${dateFrom}T00:00:00Z` : null;
-      toDate = dateTo ? `${dateTo}T23:59:59Z` : null;
-    } else if (dateRange !== 'all') {
-      const d = new Date();
-      const days = parseInt(dateRange, 10);
-      d.setDate(d.getDate() - (isNaN(days) ? 30 : days));
-      fromDate = d.toISOString();
-      toDate = new Date().toISOString();
-    }
     let q = supabase.from('lemon_squeezy_sales').select('pack_name, country_code, currency_code').limit(2000);
     if (fromDate) q = q.gte('created_at', fromDate);
     if (toDate) q = q.lte('created_at', toDate);
@@ -145,7 +115,7 @@ export default function AdminSales() {
         currencies: Array.from(currencies).sort(),
       });
     });
-  }, [dateRange, dateFrom, dateTo]);
+  }, [fromDate, toDate]);
 
   const clearFilters = () => {
     setFilterPack('');
@@ -217,40 +187,14 @@ export default function AdminSales() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Tarih Aralığı</label>
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value as DateRangeKey)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
-            >
-              {DATE_RANGE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
+          <div className="relative">
+            <label className="block text-xs text-gray-500 mb-1">Tarih aralığı</label>
+            <DateRangePicker
+              value={dateRangeValue}
+              onChange={setDateRangeValue}
+              triggerLabel={`${dateRangeValue.presetLabel} ${dateRangeValue.from ? new Date(dateRangeValue.from + 'T12:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : ''} – ${dateRangeValue.to ? new Date(dateRangeValue.to + 'T12:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}`}
+            />
           </div>
-          {dateRange === 'custom' && (
-            <>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Başlangıç</label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Bitiş</label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
-                />
-              </div>
-            </>
-          )}
           <div>
             <label className="block text-xs text-gray-500 mb-1 flex items-center gap-1"><Package className="w-3 h-3" /> Paket</label>
             <select
@@ -319,20 +263,36 @@ export default function AdminSales() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-xl border bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 p-5">
           <div className="flex items-start justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-medium text-emerald-300/90">Toplam Gelir</p>
               <p className="text-2xl font-bold text-white mt-1">{formatAmount(totalRevenue, currency)}</p>
+              {dateRangeValue.compareEnabled && (
+                <>
+                  <p className="text-xs text-gray-400 mt-0.5">{formatAmount(compareStats.revenue, currency)} önceki dönem</p>
+                  <p className={`text-xs font-medium mt-0.5 ${totalRevenue >= compareStats.revenue ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {compareStats.revenue ? `${((totalRevenue - compareStats.revenue) / compareStats.revenue * 100).toFixed(0)}%` : totalRevenue ? '+100%' : '0%'}
+                  </p>
+                </>
+              )}
             </div>
-            <DollarSign className="w-8 h-8 text-emerald-400/60" />
+            <DollarSign className="w-8 h-8 text-emerald-400/60 flex-shrink-0" />
           </div>
         </div>
         <div className="rounded-xl border bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-amber-500/30 p-5">
           <div className="flex items-start justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-medium text-amber-300/90">Satış Sayısı</p>
               <p className="text-2xl font-bold text-white mt-1">{totalSales}</p>
+              {dateRangeValue.compareEnabled && (
+                <>
+                  <p className="text-xs text-gray-400 mt-0.5">{compareStats.count} önceki dönem</p>
+                  <p className={`text-xs font-medium mt-0.5 ${totalSales >= compareStats.count ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {compareStats.count ? `${((totalSales - compareStats.count) / compareStats.count * 100).toFixed(0)}%` : totalSales ? '+100%' : '0%'}
+                  </p>
+                </>
+              )}
             </div>
-            <TrendingUp className="w-8 h-8 text-amber-400/60" />
+            <TrendingUp className="w-8 h-8 text-amber-400/60 flex-shrink-0" />
           </div>
         </div>
         <div className="rounded-xl border bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 border-indigo-500/30 p-5">
