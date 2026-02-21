@@ -16,7 +16,7 @@ CREATE TABLE profiles (
   avatar_url TEXT,
   username TEXT UNIQUE,
   language app_language NOT NULL DEFAULT 'tr',
-  credits INTEGER NOT NULL DEFAULT 3,
+  credits INTEGER NOT NULL DEFAULT 1,
   tier subscription_tier NOT NULL DEFAULT 'free',
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
   is_banned BOOLEAN NOT NULL DEFAULT FALSE,
@@ -122,7 +122,7 @@ BEGIN
     NEW.raw_user_meta_data ->> 'full_name',
     NEW.raw_user_meta_data ->> 'avatar_url',
     'rüyacı_' || substr(md5(NEW.id::text || gen_random_uuid()::text), 1, 10),
-    3
+    1
   );
   RETURN NEW;
 END;

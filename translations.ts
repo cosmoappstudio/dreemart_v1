@@ -56,6 +56,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     menuSettings: "Ayarlar",
     menuRestore: "Satın Alımları Geri Yükle",
     language: "Dil / Language",
+    legal: "YASAL",
 
     // Gamification
     dreamScore: "Rüya Skoru",
@@ -146,6 +147,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     menuSettings: "Settings",
     menuRestore: "Restore Purchases",
     language: "Language",
+    legal: "LEGAL",
     dreamScore: "Dream Score",
     yourPainter: "Your Painter",
     yourPainterDesc: "You create most in this style",
@@ -228,6 +230,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     menuSettings: "Ajustes",
     menuRestore: "Restaurar Compras",
     language: "Idioma",
+    legal: "LEGAL",
     dreamScore: "Puntuación",
     yourPainter: "Tu Pintor",
     yourPainterDesc: "Creas más en este estilo",
@@ -310,6 +313,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     menuSettings: "Einstellungen",
     menuRestore: "Käufe Wiederherstellen",
     language: "Sprache",
+    legal: "RECHTLICHES",
     dreamScore: "Traum-Punkte",
     yourPainter: "Dein Maler",
     yourPainterDesc: "Du erstellst am meisten in diesem Stil",

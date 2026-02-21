@@ -400,7 +400,7 @@ export default function MainApp() {
             <h1 className="text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200">{t('appName')}</h1>
           </div>
         </div>
-        <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full border border-white/5">
+        <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full border border-white/5 min-h-[44px] touch-manipulation">
           <Zap className={`w-3.5 h-3.5 ${tier === 'PRO' ? 'text-gold-400 fill-gold-400' : 'text-gray-400'}`} />
           <span className="text-xs font-bold font-mono text-gray-200">{tier === 'PRO' ? t('generateButtonPro') : credits}</span>
         </button>
@@ -458,6 +458,14 @@ export default function MainApp() {
         <section className="p-4 rounded-xl bg-white/5 border border-white/5 text-center">
           <p className="text-xs text-gray-400 italic">{t('tip')}</p>
         </section>
+        {tier === 'FREE' && (
+          <section className="md:hidden p-4 rounded-xl bg-gradient-to-r from-gold-500/10 to-amber-500/10 border border-gold-500/20">
+            <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="w-full py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-gold-500/20 to-amber-500/20 border border-gold-500/30 text-gold-300 hover:from-gold-500/30 hover:to-amber-500/30 transition-colors flex items-center justify-center gap-2 min-h-[48px] touch-manipulation">
+              <Zap className="w-4 h-4" />
+              {t('loadCredits')}
+            </button>
+          </section>
+        )}
       </main>
     </>
   );
@@ -526,7 +534,7 @@ export default function MainApp() {
           <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider"><Zap className="w-3 h-3" />{t('creditsRemaining')}</div>
             <div className="text-2xl font-serif font-bold text-white">{tier === 'PRO' ? '∞' : credits}</div>
-            {tier === 'FREE' && <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="text-xs text-gold-400 hover:text-gold-300 font-bold mt-1 text-left">{t('loadCredits')}</button>}
+            {tier === 'FREE' && <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="text-xs text-gold-400 hover:text-gold-300 font-bold mt-1 text-left min-h-[44px] touch-manipulation flex items-center">{t('loadCredits')}</button>}
           </div>
           <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider"><History className="w-3 h-3" />{t('dreamsGenerated')}</div>
@@ -548,6 +556,13 @@ export default function MainApp() {
             <span className="text-xs text-purple-200/60 mt-1">{dreams.length} {t('dreamsWith')}</span>
           </div>
         </div>
+
+        {tier === 'FREE' && (
+          <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="w-full py-4 rounded-xl font-bold text-base bg-gradient-to-r from-gold-500/20 to-amber-500/20 border border-gold-500/30 text-gold-300 hover:from-gold-500/30 hover:to-amber-500/30 transition-colors flex items-center justify-center gap-2 min-h-[52px] touch-manipulation">
+            <Zap className="w-5 h-5" />
+            {t('loadCredits')}
+          </button>
+        )}
 
         {/* Senin Ressamın */}
         {favoriteArtistName && (
@@ -593,7 +608,7 @@ export default function MainApp() {
 
         {/* Legal links (mobile: no sidebar) */}
         <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-          <div className="flex items-center gap-2 mb-3 text-gray-400 text-xs uppercase tracking-wider">Yasal</div>
+          <div className="flex items-center gap-2 mb-3 text-gray-400 text-xs uppercase tracking-wider">{t('legal')}</div>
           <div className="flex flex-wrap gap-3">
             <Link to="/terms" className="text-sm text-gray-400 hover:text-white">{LEGAL_LINK_LABELS[language].terms}</Link>
             <Link to="/privacy" className="text-sm text-gray-400 hover:text-white">{LEGAL_LINK_LABELS[language].privacy}</Link>
@@ -685,7 +700,7 @@ export default function MainApp() {
       <button onClick={() => setActiveTab('gallery')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'gallery' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><LayoutGrid className="w-5 h-5" />{t('tabGallery')}</button>
       <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'profile' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><User className="w-5 h-5" />{t('tabProfile')}</button>
       <div className="mt-auto pt-4 border-t border-white/5 space-y-1">
-        <div className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-gray-500">Yasal</div>
+        <div className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-gray-500">{t('legal')}</div>
         <Link to="/terms" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].terms}</Link>
         <Link to="/privacy" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].privacy}</Link>
         <Link to="/cookie-policy" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].cookie_policy}</Link>
