@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { trackEvent } from '../lib/analytics';
-import { metaLead } from '../lib/metaPixel';
+import { metaLead, metaTrackCustom } from '../lib/metaPixel';
 
 export interface Profile {
   id: string;
@@ -115,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN' && session?.user) {
         trackEvent('login', { method: 'Google' });
         metaLead();
+        metaTrackCustom('login', { method: 'Google' });
       }
       setUser(session?.user ?? null);
       if (session?.user?.id) fetchProfile(session.user.id);
