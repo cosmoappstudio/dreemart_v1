@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { trackEvent } from '../lib/analytics';
+import { metaLead } from '../lib/metaPixel';
 
 export interface Profile {
   id: string;
@@ -113,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         trackEvent('login', { method: 'Google' });
+        metaLead();
       }
       setUser(session?.user ?? null);
       if (session?.user?.id) fetchProfile(session.user.id);

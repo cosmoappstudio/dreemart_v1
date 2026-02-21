@@ -3,8 +3,10 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { initAnalytics } from './lib/analytics';
+import { initMetaPixel } from './lib/metaPixel';
 
 initAnalytics();
+initMetaPixel();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

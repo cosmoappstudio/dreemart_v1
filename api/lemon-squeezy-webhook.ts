@@ -60,6 +60,53 @@ async function sendGa4Purchase(params: {
   }
 }
 
+async function sendMetaCapiPurchase(params: {
+  userId: string | null;
+  transactionId: string;
+  value: number;
+  currency: string;
+  packId: string | null;
+  packName: string | null;
+}) {
+  const pixelId = process.env.VITE_META_PIXEL_ID || process.env.META_PIXEL_ID;
+  const accessToken = process.env.META_CAPI_ACCESS_TOKEN;
+  if (!pixelId || !accessToken) return;
+  const valueNum = typeof params.value === 'number' ? params.value : parseFloat(String(params.value)) || 0;
+  const currency = params.currency || 'USD';
+  const userData: Record<string, string> = {};
+  if (params.userId) {
+    const enc = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', enc.encode(params.userId));
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    userData.external_id = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  const payload = {
+    data: [
+      {
+        event_name: 'Purchase',
+        event_time: Math.floor(Date.now() / 1000),
+        event_id: params.transactionId,
+        action_source: 'website',
+        user_data: userData,
+        custom_data: {
+          currency,
+          value: valueNum,
+          order_id: params.transactionId,
+          content_ids: [params.packId || 'unknown'],
+          content_type: 'product',
+          num_items: 1,
+        },
+      },
+    ],
+  };
+  const url = `https://graph.facebook.com/v18.0/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`;
+  try {
+    await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  } catch {
+    // ignore CAPI errors, do not fail webhook
+  }
+}
+
 export default async function handler(req: Request) {
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
@@ -210,14 +257,24 @@ export default async function handler(req: Request) {
     const rawTotal = total != null ? Number(total) : 0;
     const valueNum = !isNaN(rawTotal) && rawTotal >= 0 ? rawTotal / 100 : 0;
     if (valueNum > 0) {
-      await sendGa4Purchase({
-        userId: userId || null,
-        transactionId: String(transactionId),
-        value: valueNum,
-        currency: currencyCode,
-        packId,
-        packName,
-      });
+      await Promise.all([
+        sendGa4Purchase({
+          userId: userId || null,
+          transactionId: String(transactionId),
+          value: valueNum,
+          currency: currencyCode,
+          packId,
+          packName,
+        }),
+        sendMetaCapiPurchase({
+          userId: userId || null,
+          transactionId: String(transactionId),
+          value: valueNum,
+          currency: currencyCode,
+          packId,
+          packName,
+        }),
+      ]);
     }
   }
 

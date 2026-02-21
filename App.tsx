@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { pageView } from './lib/analytics';
+import { metaPageView } from './lib/metaPixel';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { supabase } from './lib/supabase';
 import { ADMIN_PATH } from './lib/adminPath';
@@ -68,6 +69,7 @@ function AnalyticsPageView() {
     const base = location.pathname.split('/')[1] || '/';
     const title = titles[location.pathname] ?? titles[`/${base}`] ?? location.pathname;
     pageView(path, title);
+    metaPageView();
   }, [location]);
   return null;
 }
