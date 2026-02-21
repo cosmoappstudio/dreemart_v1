@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase';
 import { ARTISTS as FALLBACK_ARTISTS } from './constants';
 import { Artist, LoadingState, DreamRecord, Language } from './types';
 import { TRANSLATIONS } from './translations';
+import { trackEvent, trackBeginCheckout, trackViewItemList } from './lib/analytics';
 import { Link } from 'react-router-dom';
 import { ADMIN_PATH } from './lib/adminPath';
 import { Sparkles, Moon, Share2, X, Stars, User, Home, Crown, CheckCircle2, Zap, History, LayoutGrid, Calendar, Globe, LogOut, AlertCircle, RefreshCw, Palette, Award, ChevronDown, ChevronLeft, ChevronRight, Settings, Download } from 'lucide-react';
@@ -145,6 +146,7 @@ export default function MainApp() {
     if (tier === 'FREE' && credits < needed) {
       setPaywallView('credits');
       setShowPaywall(true);
+      trackEvent('paywall_opened', { reason: 'insufficient_credits' });
       return;
     }
     setGenerateError(null);
@@ -173,6 +175,7 @@ export default function MainApp() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           if (res.status === 402) {
+            trackEvent('paywall_opened', { reason: 'api_402' });
             setPaywallView('credits');
             setShowPaywall(true);
           }
@@ -202,6 +205,7 @@ export default function MainApp() {
         ...prev,
       ]);
       setShowSuccessView(true);
+      trackEvent('dream_generated', { artist_count: results.length });
       setTimeout(() => refreshProfile(), 1500);
     } catch (e) {
       console.error(e);
@@ -226,9 +230,22 @@ export default function MainApp() {
     }
   };
 
+  const parsePriceToUsd = (priceStr: string | undefined): number => {
+    if (!priceStr || typeof priceStr !== 'string') return 0;
+    const num = parseFloat(priceStr.replace(/[^\d.,]/g, '').replace(',', '.'));
+    return isNaN(num) ? 0 : num;
+  };
+
   const handlePurchase = async (planId: string) => {
     setCheckoutError(null);
     const pack = creditPacksFromDb.find((p) => p.id === planId);
+    const priceUsd = pack ? parsePriceToUsd(pack.price) : 0;
+    const itemName = pack?.name ?? planId;
+    trackBeginCheckout({
+      value: priceUsd,
+      currency: 'USD',
+      items: [{ item_id: planId, item_name: itemName, price: priceUsd }],
+    });
     const variantId = pack && 'lemon_squeezy_variant_id' in pack ? pack.lemon_squeezy_variant_id : null;
     const variantIdNum = variantId != null ? (typeof variantId === 'string' ? variantId.trim() : String(variantId)) : '';
     // Lemon Squeezy: API ile checkout URL oluştur (UUID değiştiği için sabit link yerine)
@@ -276,6 +293,7 @@ export default function MainApp() {
   };
 
   const handleDownload = async (imageUrl: string, filename = 'dreemart-dream.png') => {
+    trackEvent('download_clicked', { from: 'dashboard' });
     try {
       const res = await fetch(imageUrl, { mode: 'cors' });
       if (!res.ok) throw new Error('Failed to fetch');
@@ -292,6 +310,7 @@ export default function MainApp() {
   };
 
   const handleShare = async (imageUrl: string, title?: string) => {
+    trackEvent('share_clicked', { from: 'dashboard' });
     const shareData: ShareData = { title: title || 'Dreemart', text: title ? `${title} - Dreemart` : 'Dreemart ile oluşturduğum rüya sanatı' };
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
@@ -360,7 +379,21 @@ export default function MainApp() {
     return t('levelNew');
   };
 
-  const PaywallModal = () => (
+  const PaywallModal = () => {
+    useEffect(() => {
+      const packs = getCreditPacks();
+      if (packs.length > 0) {
+        const parsePrice = (s: string) => {
+          const num = parseFloat(String(s).replace(/[^\d.,]/g, '').replace(',', '.'));
+          return isNaN(num) ? 0 : num;
+        };
+        trackViewItemList({
+          currency: 'USD',
+          items: packs.map((p) => ({ item_id: p.id, item_name: p.title, price: parsePrice(p.price) })),
+        });
+      }
+    }, []);
+    return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-3 sm:p-4 animate-fade-in overflow-y-auto">
       <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => { setShowPaywall(false); setCheckoutError(null); }} aria-hidden />
       <div className="relative w-full max-w-md bg-gradient-to-b from-indigo-950 to-[#0B0D17] border border-gold-500/20 rounded-2xl overflow-hidden shadow-2xl animate-slide-up">
@@ -390,6 +423,7 @@ export default function MainApp() {
       </div>
     </div>
   );
+  };
 
   const SuccessView = () => {
     const [activeIndex, setActiveIndex] = useState(0);
@@ -442,7 +476,7 @@ export default function MainApp() {
             <button onClick={() => { setShowSuccessView(false); setDreamText(''); }} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 font-bold text-white flex items-center justify-center gap-2 min-h-[52px] touch-manipulation active:scale-[0.98]">
               <Sparkles className="w-5 h-5" />{t('newDreamButton')}
             </button>
-            <button onClick={() => { setShowSuccessView(false); setActiveTab('gallery'); }} className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><LayoutGrid className="w-4 h-4" />{t('goToGallery')}</button>
+            <button onClick={() => { trackEvent('tab_switch', { tab: 'gallery' }); setShowSuccessView(false); setActiveTab('gallery'); }} className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><LayoutGrid className="w-4 h-4" />{t('goToGallery')}</button>
           </div>
         </div>
       </div>
@@ -459,7 +493,7 @@ export default function MainApp() {
             <h1 className="text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200">{t('appName')}</h1>
           </div>
         </div>
-        <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full border border-white/5 min-h-[44px] touch-manipulation">
+        <button onClick={() => { trackEvent('paywall_opened', { source: 'header' }); setPaywallView('credits'); setShowPaywall(true); }} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full border border-white/5 min-h-[44px] touch-manipulation">
           <Zap className={`w-3.5 h-3.5 ${tier === 'PRO' ? 'text-gold-400 fill-gold-400' : 'text-gray-400'}`} />
           <span className="text-xs font-bold font-mono text-gray-200">{tier === 'PRO' ? t('generateButtonPro') : credits}</span>
         </button>
@@ -528,7 +562,7 @@ export default function MainApp() {
         </section>
         {tier === 'FREE' && (
           <section className="md:hidden p-4 rounded-xl bg-gradient-to-r from-gold-500/10 to-amber-500/10 border border-gold-500/20">
-            <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="w-full py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-gold-500/20 to-amber-500/20 border border-gold-500/30 text-gold-300 hover:from-gold-500/30 hover:to-amber-500/30 transition-colors flex items-center justify-center gap-2 min-h-[48px] touch-manipulation">
+            <button onClick={() => { trackEvent('paywall_opened', { source: 'home_section' }); setPaywallView('credits'); setShowPaywall(true); }} className="w-full py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-gold-500/20 to-amber-500/20 border border-gold-500/30 text-gold-300 hover:from-gold-500/30 hover:to-amber-500/30 transition-colors flex items-center justify-center gap-2 min-h-[48px] touch-manipulation">
               <Zap className="w-4 h-4" />
               {t('loadCredits')}
             </button>
@@ -549,7 +583,7 @@ export default function MainApp() {
           <div className="flex flex-col items-center justify-center text-gray-500 py-20">
             <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4"><LayoutGrid className="w-8 h-8 opacity-30" /></div>
             <p className="text-center whitespace-pre-wrap">{t('galleryEmpty')}</p>
-            <button onClick={() => setActiveTab('home')} className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm font-bold text-white">{t('createNow')}</button>
+            <button onClick={() => { trackEvent('tab_switch', { tab: 'home' }); setActiveTab('home'); }} className="mt-6 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm font-bold text-white">{t('createNow')}</button>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -602,7 +636,7 @@ export default function MainApp() {
           <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider"><Zap className="w-3 h-3" />{t('creditsRemaining')}</div>
             <div className="text-2xl font-serif font-bold text-white">{tier === 'PRO' ? '∞' : credits}</div>
-            {tier === 'FREE' && <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="text-xs text-gold-400 hover:text-gold-300 font-bold mt-1 text-left min-h-[44px] touch-manipulation flex items-center">{t('loadCredits')}</button>}
+            {tier === 'FREE' && <button onClick={() => { trackEvent('paywall_opened', { source: 'profile_stats' }); setPaywallView('credits'); setShowPaywall(true); }} className="text-xs text-gold-400 hover:text-gold-300 font-bold mt-1 text-left min-h-[44px] touch-manipulation flex items-center">{t('loadCredits')}</button>}
           </div>
           <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider"><History className="w-3 h-3" />{t('dreamsGenerated')}</div>
@@ -626,7 +660,7 @@ export default function MainApp() {
         </div>
 
         {tier === 'FREE' && (
-          <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="w-full py-4 rounded-xl font-bold text-base bg-gradient-to-r from-gold-500/20 to-amber-500/20 border border-gold-500/30 text-gold-300 hover:from-gold-500/30 hover:to-amber-500/30 transition-colors flex items-center justify-center gap-2 min-h-[52px] touch-manipulation">
+          <button onClick={() => { trackEvent('paywall_opened', { source: 'profile' }); setPaywallView('credits'); setShowPaywall(true); }} className="w-full py-4 rounded-xl font-bold text-base bg-gradient-to-r from-gold-500/20 to-amber-500/20 border border-gold-500/30 text-gold-300 hover:from-gold-500/30 hover:to-amber-500/30 transition-colors flex items-center justify-center gap-2 min-h-[52px] touch-manipulation">
             <Zap className="w-5 h-5" />
             {t('loadCredits')}
           </button>
@@ -820,16 +854,16 @@ export default function MainApp() {
           <span className="text-sm font-medium">Yönetim Paneli</span>
         </Link>
       )}
-      <button onClick={() => setActiveTab('home')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'home' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><Home className="w-5 h-5" />{t('tabHome')}</button>
-      <button onClick={() => setActiveTab('gallery')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'gallery' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><LayoutGrid className="w-5 h-5" />{t('tabGallery')}</button>
-      <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'profile' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><User className="w-5 h-5" />{t('tabProfile')}</button>
+      <button onClick={() => { trackEvent('tab_switch', { tab: 'home' }); setActiveTab('home'); }} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'home' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><Home className="w-5 h-5" />{t('tabHome')}</button>
+      <button onClick={() => { trackEvent('tab_switch', { tab: 'gallery' }); setActiveTab('gallery'); }} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'gallery' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><LayoutGrid className="w-5 h-5" />{t('tabGallery')}</button>
+      <button onClick={() => { trackEvent('tab_switch', { tab: 'profile' }); setActiveTab('profile'); }} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left ${activeTab === 'profile' ? 'bg-white/10 text-white font-bold' : 'text-gray-400 hover:bg-white/5'}`}><User className="w-5 h-5" />{t('tabProfile')}</button>
       <div className="mt-auto pt-4 border-t border-white/5 space-y-1">
         <div className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-gray-500">{t('legal')}</div>
         <Link to="/terms" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].terms}</Link>
         <Link to="/privacy" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].privacy}</Link>
         <Link to="/cookie-policy" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].cookie_policy}</Link>
         <Link to="/refund-policy" className="block px-4 py-1.5 text-xs text-gray-400 hover:text-white transition-colors">{LEGAL_LINK_LABELS[language].refund_policy}</Link>
-        <button onClick={() => { setPaywallView('credits'); setShowPaywall(true); }} className="w-full mt-3 flex items-center justify-between bg-gradient-to-r from-purple-900/40 to-blue-900/40 px-4 py-3 rounded-xl border border-white/5">
+        <button onClick={() => { trackEvent('paywall_opened', { source: 'sidebar' }); setPaywallView('credits'); setShowPaywall(true); }} className="w-full mt-3 flex items-center justify-between bg-gradient-to-r from-purple-900/40 to-blue-900/40 px-4 py-3 rounded-xl border border-white/5">
           <div className="flex items-center gap-2"><Zap className={`w-4 h-4 ${tier === 'PRO' ? 'text-gold-400' : 'text-gray-400'}`} /><span className="text-sm font-bold text-gray-200">{tier === 'PRO' ? t('proPlan') : `${credits} Credits`}</span></div>
           {tier !== 'PRO' && <span className="text-xs text-gold-400 font-bold">{t('loadCredits')}</span>}
         </button>
@@ -854,9 +888,9 @@ export default function MainApp() {
         {!showSuccessView && (
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 w-full bg-[#0B0D17]/90 backdrop-blur-lg border-t border-white/10 pb-safe">
             <div className="flex justify-around items-center h-14 min-h-[56px]">
-              <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-0.5 w-full h-full justify-center min-h-[44px] touch-manipulation ${activeTab === 'home' ? 'text-gold-400' : 'text-gray-500'}`}><Home className="w-6 h-6" /><span className="text-[10px] font-bold">{t('tabHome')}</span></button>
-              <button onClick={() => setActiveTab('gallery')} className={`flex flex-col items-center gap-0.5 w-full h-full justify-center min-h-[44px] touch-manipulation ${activeTab === 'gallery' ? 'text-gold-400' : 'text-gray-500'}`}><LayoutGrid className="w-6 h-6" /><span className="text-[10px] font-bold">{t('tabGallery')}</span></button>
-              <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-0.5 w-full h-full justify-center min-h-[44px] touch-manipulation ${activeTab === 'profile' ? 'text-gold-400' : 'text-gray-500'}`}><User className="w-6 h-6" /><span className="text-[10px] font-bold">{t('tabProfile')}</span></button>
+              <button onClick={() => { trackEvent('tab_switch', { tab: 'home' }); setActiveTab('home'); }} className={`flex flex-col items-center gap-0.5 w-full h-full justify-center min-h-[44px] touch-manipulation ${activeTab === 'home' ? 'text-gold-400' : 'text-gray-500'}`}><Home className="w-6 h-6" /><span className="text-[10px] font-bold">{t('tabHome')}</span></button>
+              <button onClick={() => { trackEvent('tab_switch', { tab: 'gallery' }); setActiveTab('gallery'); }} className={`flex flex-col items-center gap-0.5 w-full h-full justify-center min-h-[44px] touch-manipulation ${activeTab === 'gallery' ? 'text-gold-400' : 'text-gray-500'}`}><LayoutGrid className="w-6 h-6" /><span className="text-[10px] font-bold">{t('tabGallery')}</span></button>
+              <button onClick={() => { trackEvent('tab_switch', { tab: 'profile' }); setActiveTab('profile'); }} className={`flex flex-col items-center gap-0.5 w-full h-full justify-center min-h-[44px] touch-manipulation ${activeTab === 'profile' ? 'text-gold-400' : 'text-gray-500'}`}><User className="w-6 h-6" /><span className="text-[10px] font-bold">{t('tabProfile')}</span></button>
             </div>
           </div>
         )}

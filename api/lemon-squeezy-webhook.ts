@@ -16,6 +16,50 @@ function jsonResponse(obj: object, status: number) {
   });
 }
 
+async function sendGa4Purchase(params: {
+  userId: string | null;
+  transactionId: string;
+  value: number;
+  currency: string;
+  packId: string | null;
+  packName: string | null;
+}) {
+  const measurementId = process.env.VITE_GA_MEASUREMENT_ID || process.env.GA4_MEASUREMENT_ID;
+  const apiSecret = process.env.GA4_MEASUREMENT_PROTOCOL_SECRET;
+  if (!measurementId || !apiSecret) return;
+  const clientId = params.userId ? `user-${params.userId}` : `anon-${params.transactionId}`;
+  const valueNum = typeof params.value === 'number' ? params.value : parseFloat(String(params.value)) || 0;
+  const currency = params.currency || 'USD';
+  const payload = {
+    client_id: clientId,
+    user_id: params.userId || undefined,
+    events: [
+      {
+        name: 'purchase',
+        params: {
+          currency,
+          value: valueNum,
+          transaction_id: params.transactionId,
+          items: [
+            {
+              item_id: params.packId || 'unknown',
+              item_name: params.packName || 'Credit Pack',
+              price: valueNum,
+              quantity: 1,
+            },
+          ],
+        },
+      },
+    ],
+  };
+  const url = `https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(measurementId)}&api_secret=${encodeURIComponent(apiSecret)}`;
+  try {
+    await fetch(url, { method: 'POST', body: JSON.stringify(payload) });
+  } catch {
+    // ignore GA4 errors, do not fail webhook
+  }
+}
+
 export default async function handler(req: Request) {
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
@@ -161,6 +205,20 @@ export default async function handler(req: Request) {
       },
       { onConflict: 'transaction_id', ignoreDuplicates: true }
     );
+
+    // Lemon Squeezy total is in cents
+    const rawTotal = total != null ? Number(total) : 0;
+    const valueNum = !isNaN(rawTotal) && rawTotal >= 0 ? rawTotal / 100 : 0;
+    if (valueNum > 0) {
+      await sendGa4Purchase({
+        userId: userId || null,
+        transactionId: String(transactionId),
+        value: valueNum,
+        currency: currencyCode,
+        packId,
+        packName,
+      });
+    }
   }
 
   return jsonResponse({ received: true }, 200);

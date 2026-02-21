@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { pageView } from './lib/analytics';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { supabase } from './lib/supabase';
 import { ADMIN_PATH } from './lib/adminPath';
@@ -46,6 +47,29 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   const isAdmin = profile?.role === 'admin';
   if (!isAdmin) return <Navigate to="/app" replace />;
   return <>{children}</>;
+}
+
+/** Google Analytics page view tracking on route change. */
+function AnalyticsPageView() {
+  const location = useLocation();
+  useEffect(() => {
+    const path = location.pathname + location.search;
+    const titles: Record<string, string> = {
+      '/': 'Landing',
+      '/login': 'Login',
+      '/app': 'Dashboard',
+      '/app/gallery': 'Gallery',
+      '/app/profile': 'Profile',
+      '/terms': 'Terms',
+      '/privacy': 'Privacy',
+      '/refund-policy': 'Refund Policy',
+      '/cookie-policy': 'Cookie Policy',
+    };
+    const base = location.pathname.split('/')[1] || '/';
+    const title = titles[location.pathname] ?? titles[`/${base}`] ?? location.pathname;
+    pageView(path, title);
+  }, [location]);
+  return null;
 }
 
 /** URL'de OAuth state hatası varsa /login'e yönlendirir (bad_oauth_state). */
@@ -182,6 +206,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <AnalyticsPageView />
         <OAuthErrorHandler />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
