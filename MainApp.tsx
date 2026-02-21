@@ -359,32 +359,35 @@ export default function MainApp() {
   );
 
   const SuccessView = () => (
-    <div className="fixed inset-0 z-[100] bg-[#0B0D17] flex flex-col animate-fade-in overflow-hidden">
-      <div className="relative w-full h-[45vh] sm:h-[50vh] min-h-[240px] max-h-[400px] flex-shrink-0">
-        <img src={generatedImage!} alt="Generated Dream" className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#0B0D17]" />
-        <div className="absolute top-4 sm:top-8 left-4 right-4 flex justify-between items-start">
-          <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-2">
-            <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-            <span className="text-xs font-bold text-white">{t('savedToGallery')}</span>
+    <div className="fixed inset-0 z-[100] flex flex-col md:items-center md:justify-center md:p-6 animate-fade-in">
+      <div className="absolute inset-0 bg-[#0B0D17] md:bg-black/70 md:backdrop-blur-sm" aria-hidden />
+      <div className="relative z-10 w-full md:max-w-4xl md:max-h-[90vh] md:rounded-2xl md:shadow-2xl md:border md:border-white/10 flex flex-col bg-[#0B0D17] overflow-hidden flex-1 md:flex-initial">
+        <div className="relative w-full h-[40vh] md:h-[320px] min-h-[200px] md:min-h-0 flex-shrink-0">
+          <img src={generatedImage!} alt="Generated Dream" className="w-full h-full object-cover object-center" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#0B0D17]" />
+          <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+            <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-2">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+              <span className="text-xs font-bold text-white">{t('savedToGallery')}</span>
+            </div>
+            <button onClick={() => setShowSuccessView(false)} className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/70 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gold-400 touch-manipulation" aria-label={language === 'tr' ? 'Kapat' : 'Close'}><X className="w-5 h-5" /></button>
           </div>
-          <button onClick={() => setShowSuccessView(false)} className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/70 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gold-400 touch-manipulation" aria-label={language === 'tr' ? 'Kapat' : 'Close'}><X className="w-5 h-5" /></button>
+          <div className="absolute bottom-3 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+            <span className="text-xs font-bold text-gold-300 uppercase">{selectedArtist?.name} {t('style')}</span>
+          </div>
         </div>
-        <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-black/60 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border border-white/10">
-          <span className="text-[10px] sm:text-xs font-bold text-gold-300 uppercase">{selectedArtist?.name} {t('style')}</span>
-        </div>
-      </div>
-      <div className="flex-1 min-h-0 px-4 sm:px-6 -mt-4 sm:-mt-6 z-10 flex flex-col overflow-y-auto pb-28 sm:pb-24">
-        <h2 className="text-xl sm:text-2xl font-serif font-bold text-white mb-3 sm:mb-4 flex items-center gap-2"><Stars className="w-5 h-5 sm:w-6 sm:h-6 text-gold-400 flex-shrink-0" />{t('dreamMeaningTitle')}</h2>
-        <p className="text-gray-300 leading-relaxed text-base sm:text-lg mb-6 max-w-3xl">{interpretation}</p>
-        <div className="space-y-3 mt-auto">
-          <button onClick={() => { setShowSuccessView(false); setDreamText(''); }} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 font-bold text-white flex items-center justify-center gap-2 min-h-[52px] touch-manipulation active:scale-[0.98]">
-            <Sparkles className="w-5 h-5" />{t('newDreamButton')}
-          </button>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => generatedImage && handleShare(generatedImage, selectedArtist?.name ? `${t('style')} ${selectedArtist.name}` : undefined)} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/15 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Share2 className="w-4 h-4" />{t('share')}</button>
-            <button onClick={() => generatedImage && handleDownload(generatedImage)} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/15 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Download className="w-4 h-4" />{t('download')}</button>
-            <button onClick={() => { setShowSuccessView(false); setActiveTab('gallery'); }} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/15 flex items-center justify-center gap-2 col-span-2 min-h-[48px] touch-manipulation"><LayoutGrid className="w-4 h-4" />{t('goToGallery')}</button>
+        <div className="flex-1 min-h-0 px-4 sm:px-6 -mt-4 md:-mt-0 pt-4 flex flex-col overflow-y-auto pb-28 md:pb-6">
+          <h2 className="text-xl sm:text-2xl font-serif font-bold text-white mb-3 sm:mb-4 flex items-center gap-2"><Stars className="w-5 h-5 sm:w-6 sm:h-6 text-gold-400 flex-shrink-0" />{t('dreamMeaningTitle')}</h2>
+          <p className="text-gray-300 leading-relaxed text-base sm:text-lg mb-6 max-w-3xl">{interpretation}</p>
+          <div className="space-y-3 mt-auto">
+            <button onClick={() => { setShowSuccessView(false); setDreamText(''); }} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 font-bold text-white flex items-center justify-center gap-2 min-h-[52px] touch-manipulation active:scale-[0.98]">
+              <Sparkles className="w-5 h-5" />{t('newDreamButton')}
+            </button>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => generatedImage && handleShare(generatedImage, selectedArtist?.name ? `${t('style')} ${selectedArtist.name}` : undefined)} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/15 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Share2 className="w-4 h-4" />{t('share')}</button>
+              <button onClick={() => generatedImage && handleDownload(generatedImage)} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/15 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Download className="w-4 h-4" />{t('download')}</button>
+              <button onClick={() => { setShowSuccessView(false); setActiveTab('gallery'); }} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/15 flex items-center justify-center gap-2 col-span-2 min-h-[48px] touch-manipulation"><LayoutGrid className="w-4 h-4" />{t('goToGallery')}</button>
+            </div>
           </div>
         </div>
       </div>
@@ -659,21 +662,25 @@ export default function MainApp() {
   const DreamDetailModal = ({ dream, onClose }: { dream: DreamRecord; onClose: () => void }) => {
     const fileName = `dreemart-${dream.artistName?.replace(/\s+/g, '-') || 'dream'}.png`;
     return (
-    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-fade-in overflow-y-auto">
+    <div className="fixed inset-0 z-[70] flex sm:items-center sm:justify-center sm:p-6 animate-fade-in">
       <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} aria-hidden />
-      <div className="relative w-full sm:max-w-4xl max-h-[95vh] sm:max-h-[80vh] h-[90vh] sm:h-[80vh] bg-gradient-to-b from-[#1a1c2e] to-[#0B0D17] sm:rounded-2xl overflow-hidden flex flex-col sm:flex-row shadow-2xl animate-slide-up">
-        <button onClick={onClose} className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 w-10 h-10 min-h-[44px] min-w-[44px] rounded-full bg-black/40 flex items-center justify-center text-white hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-gold-400 touch-manipulation" aria-label="Kapat"><X className="w-6 h-6" /></button>
-        <div className="relative w-full sm:w-1/2 aspect-[4/5] sm:aspect-auto flex-shrink-0 bg-black">
-          <img src={dream.imageUrl} alt="" className="w-full h-full object-cover" />
-          <div className="absolute bottom-4 left-4"><p className="text-xs font-bold text-gold-300 uppercase">{dream.artistName} {t('style')}</p></div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col">
-          <h3 className="font-serif text-xl text-gold-300 mb-4 flex items-center gap-2"><Stars className="w-5 h-5 text-purple-400" />{t('dreamMeaningTitle')}</h3>
-          <p className="text-gray-300 leading-relaxed text-sm mb-4">{dream.interpretation}</p>
-          {dream.prompt && <div className="mt-4 pt-4 border-t border-white/5"><h4 className="text-xs text-gray-500 uppercase mb-2">{t('dreamNote')}</h4><p className="text-xs text-gray-400 italic">"{dream.prompt}"</p></div>}
-          <div className="mt-6 flex gap-3">
-            <button onClick={() => dream.imageUrl && handleShare(dream.imageUrl, dream.artistName ? `${t('style')} ${dream.artistName}` : undefined)} className="flex-1 py-3 bg-white/10 rounded-lg text-sm font-bold text-white border border-white/10 hover:bg-white/15 flex items-center justify-center gap-2"><Share2 className="w-4 h-4" />{t('share')}</button>
-            <button onClick={() => dream.imageUrl && handleDownload(dream.imageUrl, fileName)} className="flex-1 py-3 bg-white/10 rounded-lg text-sm font-bold text-white border border-white/10 hover:bg-white/15 flex items-center justify-center gap-2"><Download className="w-4 h-4" />{t('download')}</button>
+      <div className="relative z-10 w-full sm:max-w-4xl sm:max-h-[85vh] h-full sm:h-auto bg-gradient-to-b from-[#1a1c2e] to-[#0B0D17] sm:rounded-2xl shadow-2xl animate-slide-up flex flex-col sm:flex-row overflow-hidden">
+        <button onClick={onClose} className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-gold-400 touch-manipulation" aria-label="Kapat"><X className="w-5 h-5" /></button>
+        <div className="flex-1 min-h-0 flex flex-col sm:flex-row overflow-y-auto sm:overflow-hidden overscroll-contain">
+          <div className="relative w-full sm:w-1/2 flex-shrink-0 bg-black sm:min-h-0">
+            <div className="w-full aspect-[4/5] sm:aspect-auto sm:h-full sm:min-h-0">
+              <img src={dream.imageUrl} alt="" className="w-full h-full object-cover object-top" />
+            </div>
+            <div className="absolute bottom-4 left-4"><p className="text-xs font-bold text-gold-300 uppercase">{dream.artistName} {t('style')}</p></div>
+          </div>
+          <div className="flex-1 p-6 pb-28 sm:pb-6 flex flex-col min-w-0 overflow-y-auto sm:overflow-y-auto">
+            <h3 className="font-serif text-xl text-gold-300 mb-4 flex items-center gap-2"><Stars className="w-5 h-5 text-purple-400 flex-shrink-0" />{t('dreamMeaningTitle')}</h3>
+            <p className="text-gray-300 leading-relaxed text-sm mb-4">{dream.interpretation}</p>
+            {dream.prompt && <div className="mt-4 pt-4 border-t border-white/5"><h4 className="text-xs text-gray-500 uppercase mb-2">{t('dreamNote')}</h4><p className="text-xs text-gray-400 italic">"{dream.prompt}"</p></div>}
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => dream.imageUrl && handleShare(dream.imageUrl, dream.artistName ? `${t('style')} ${dream.artistName}` : undefined)} className="flex-1 py-3 rounded-lg text-sm font-bold text-white border border-white/10 hover:bg-white/10 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Share2 className="w-4 h-4" />{t('share')}</button>
+              <button onClick={() => dream.imageUrl && handleDownload(dream.imageUrl, fileName)} className="flex-1 py-3 rounded-lg text-sm font-bold text-white border border-white/10 hover:bg-white/10 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Download className="w-4 h-4" />{t('download')}</button>
+            </div>
           </div>
         </div>
       </div>
@@ -738,6 +745,21 @@ export default function MainApp() {
         )}
         {selectedDreamStart && <DreamDetailModal dream={selectedDreamStart} onClose={() => setSelectedDreamStart(null)} />}
         {showPaywall && <PaywallModal />}
+        {(loadingState === LoadingState.GENERATING_IMAGE || loadingState === LoadingState.INTERPRETING) && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-[#1a1c2e] border border-white/10 shadow-2xl p-8 flex flex-col items-center gap-6">
+              <div className="w-16 h-16 rounded-full border-2 border-gold-500/50 border-t-gold-400 flex items-center justify-center">
+                <span className="animate-spin rounded-full h-10 w-10 border-2 border-transparent border-t-gold-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-white">
+                  {loadingState === LoadingState.GENERATING_IMAGE ? t('loadingImage') : t('loadingInterpret')}
+                </p>
+                <p className="text-sm text-gray-400 mt-1">{t('loadingSubtitle')}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

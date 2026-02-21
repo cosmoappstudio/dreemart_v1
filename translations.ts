@@ -6,6 +6,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     appName: "Dreemart",
     loadingImage: "Tablo Çiziliyor...",
     loadingInterpret: "Yorumlanıyor...",
+    loadingSubtitle: "Rüyanız sanat eserine dönüşüyor...",
     errorGeneric: "Bir hata oluştu.",
     
     // Tabs
@@ -105,6 +106,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     appName: "Dreemart",
     loadingImage: "Painting...",
     loadingInterpret: "Interpreting...",
+    loadingSubtitle: "Your dream is becoming art...",
     errorGeneric: "An error occurred.",
     tabHome: "HOME",
     tabGallery: "GALLERY",
@@ -188,6 +190,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     appName: "Dreemart",
     loadingImage: "Pintando...",
     loadingInterpret: "Interpretando...",
+    loadingSubtitle: "Tu sueño se convierte en arte...",
     errorGeneric: "Ocurrió un error.",
     tabHome: "INICIO",
     tabGallery: "GALERÍA",
@@ -271,6 +274,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     appName: "Dreemart",
     loadingImage: "Malen...",
     loadingInterpret: "Deuten...",
+    loadingSubtitle: "Dein Traum wird zu Kunst...",
     errorGeneric: "Ein Fehler ist aufgetreten.",
     tabHome: "START",
     tabGallery: "GALERIE",
