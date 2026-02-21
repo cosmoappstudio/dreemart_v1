@@ -71,11 +71,11 @@ export default function MainApp() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallView, setPaywallView] = useState<'credits'>('credits');
   const [dreamText, setDreamText] = useState('');
-  const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+  const [selectedArtists, setSelectedArtists] = useState<Artist[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE);
   const [generateError, setGenerateError] = useState<string | null>(null);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [interpretation, setInterpretation] = useState<string | null>(null);
+  const [generatedDreams, setGeneratedDreams] = useState<Array<{ id: string; imageUrl: string; interpretation: string; artistName: string; createdAt: string }>>([]);
+  const [generateProgress, setGenerateProgress] = useState<{ current: number; total: number } | null>(null);
   const [showSuccessView, setShowSuccessView] = useState(false);
   const [selectedDreamStart, setSelectedDreamStart] = useState<DreamRecord | null>(null);
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
@@ -92,14 +92,15 @@ export default function MainApp() {
   useEffect(() => {
     if (!supabase) {
       setArtists(FALLBACK_ARTISTS);
-      setSelectedArtist(FALLBACK_ARTISTS[0] ?? null);
+      setSelectedArtists(FALLBACK_ARTISTS.length > 0 ? [FALLBACK_ARTISTS[0]] : []);
       setArtistsLoading(false);
       return;
     }
     supabase.from('artists').select('id, name, style_description, image_url').eq('is_active', true).order('sort_order').then(({ data }) => {
       const list = (data || []).map(mapDbArtist);
-      setArtists(list.length > 0 ? list : FALLBACK_ARTISTS);
-      setSelectedArtist(list.length > 0 ? list[0] : FALLBACK_ARTISTS[0] ?? null);
+      const src = list.length > 0 ? list : FALLBACK_ARTISTS;
+      setArtists(src);
+      setSelectedArtists(src.length > 0 ? [src[0]] : []);
       setArtistsLoading(false);
     });
   }, []);
@@ -139,57 +140,89 @@ export default function MainApp() {
   }, []);
 
   const handleGenerate = async () => {
-    if (!dreamText.trim() || !selectedArtist || !user) return;
-    if (tier === 'FREE' && credits <= 0) {
+    if (!dreamText.trim() || selectedArtists.length === 0 || !user) return;
+    const needed = selectedArtists.length;
+    if (tier === 'FREE' && credits < needed) {
       setPaywallView('credits');
       setShowPaywall(true);
       return;
     }
     setGenerateError(null);
     setLoadingState(LoadingState.GENERATING_IMAGE);
-    setGeneratedImage(null);
-    setInterpretation(null);
+    setGeneratedDreams([]);
+    setGenerateProgress(needed > 1 ? { current: 0, total: needed } : null);
 
+    const results: Array<{ id: string; imageUrl: string; interpretation: string; artistName: string; createdAt: string }> = [];
     try {
       const session = await supabase?.auth.getSession();
       const token = session?.data?.session?.access_token;
       if (!token) throw new Error('Not signed in');
       const base = (import.meta.env.VITE_APP_URL && !import.meta.env.VITE_APP_URL.startsWith('http')) ? `https://${import.meta.env.VITE_APP_URL}` : (import.meta.env.VITE_APP_URL || window.location.origin);
-      const res = await fetch(`${base}/api/generate-dream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          dreamText: dreamText.trim(),
-          artistId: selectedArtist.id,
-          language: profile?.language || 'tr',
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        if (res.status === 402) {
-          setPaywallView('credits');
-          setShowPaywall(true);
+
+      for (let i = 0; i < selectedArtists.length; i++) {
+        if (needed > 1) setGenerateProgress({ current: i + 1, total: needed });
+        const res = await fetch(`${base}/api/generate-dream`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            dreamText: dreamText.trim(),
+            artistId: selectedArtists[i].id,
+            language: profile?.language || 'tr',
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (res.status === 402) {
+            setPaywallView('credits');
+            setShowPaywall(true);
+          }
+          throw new Error(data.error || 'Failed');
         }
-        throw new Error(data.error || 'Failed');
+        results.push({
+          id: data.id,
+          imageUrl: data.imageUrl,
+          interpretation: data.interpretation,
+          artistName: data.artistName,
+          createdAt: data.createdAt,
+        });
       }
-      setGeneratedImage(data.imageUrl);
-      setInterpretation(data.interpretation);
+
+      setGeneratedDreams(results);
+      setGenerateProgress(null);
       setLoadingState(LoadingState.COMPLETE);
-      setDreams(prev => [{
-        id: data.id,
-        date: data.createdAt,
-        prompt: dreamText.trim(),
-        imageUrl: data.imageUrl,
-        interpretation: data.interpretation,
-        artistName: data.artistName,
-      }, ...prev]);
+      setDreams(prev => [
+        ...results.map(r => ({
+          id: r.id,
+          date: r.createdAt,
+          prompt: dreamText.trim(),
+          imageUrl: r.imageUrl,
+          interpretation: r.interpretation,
+          artistName: r.artistName,
+        })),
+        ...prev,
+      ]);
       setShowSuccessView(true);
-      // Kredileri güncellemek için kısa gecikme; aynı anda focus vs. tetiklenmesin
       setTimeout(() => refreshProfile(), 1500);
     } catch (e) {
       console.error(e);
       setLoadingState(LoadingState.ERROR);
+      setGenerateProgress(null);
       setGenerateError(e instanceof Error ? e.message : t('errorGeneric'));
+      if (results && results.length > 0) {
+        setGeneratedDreams(results);
+        setDreams(prev => [
+          ...results.map(r => ({
+            id: r.id,
+            date: r.createdAt,
+            prompt: dreamText.trim(),
+            imageUrl: r.imageUrl,
+            interpretation: r.interpretation,
+            artistName: r.artistName,
+          })),
+          ...prev,
+        ]);
+        setShowSuccessView(true);
+      }
     }
   };
 
@@ -358,13 +391,32 @@ export default function MainApp() {
     </div>
   );
 
-  const SuccessView = () => (
+  const SuccessView = () => {
+    const [activeIndex, setActiveIndex] = useState(0);
+    const current = generatedDreams[activeIndex];
+    const total = generatedDreams.length;
+    return (
     <div className="fixed inset-0 z-[100] flex flex-col md:items-center md:justify-center md:p-6 animate-fade-in">
       <div className="absolute inset-0 bg-[#0B0D17] md:bg-black/70 md:backdrop-blur-sm" aria-hidden />
       <div className="relative z-10 w-full md:max-w-5xl md:max-h-[90vh] md:rounded-2xl md:shadow-2xl md:border md:border-white/10 flex flex-col md:flex-row bg-[#0B0D17] overflow-hidden flex-1 md:flex-initial">
         <div className="relative w-full md:w-2/3 flex-shrink-0 h-[40vh] md:h-auto md:min-h-0">
-          <img src={generatedImage!} alt="Generated Dream" className="w-full h-full min-h-[240px] md:min-h-[85vh] object-cover object-center" />
+          {current && (
+            <>
+              <img src={current.imageUrl} alt="Generated Dream" className="w-full h-full min-h-[240px] md:min-h-[85vh] object-cover object-center" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent md:to-[#0B0D17]/80" />
+              {total > 1 && (
+                <>
+                  <button onClick={() => setActiveIndex(i => (i - 1 + total) % total)} className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/70"><ChevronLeft className="w-5 h-5" /></button>
+                  <button onClick={() => setActiveIndex(i => (i + 1) % total)} className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/70"><ChevronRight className="w-5 h-5" /></button>
+                  <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {generatedDreams.map((_, i) => (
+                      <button key={i} onClick={() => setActiveIndex(i)} className={`w-2 h-2 rounded-full transition-all ${activeIndex === i ? 'bg-gold-400 w-4' : 'bg-white/40'}`} aria-label={`${i + 1} / ${total}`} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
           <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
             <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
@@ -372,18 +424,20 @@ export default function MainApp() {
             </div>
             <button onClick={() => setShowSuccessView(false)} className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/70 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gold-400 touch-manipulation" aria-label={language === 'tr' ? 'Kapat' : 'Close'}><X className="w-5 h-5" /></button>
           </div>
-          <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-            <span className="text-xs font-bold text-gold-300 uppercase">{selectedArtist?.name} {t('style')}</span>
-          </div>
+          {current && (
+            <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+              <span className="text-xs font-bold text-gold-300 uppercase">{current.artistName} {t('style')}</span>
+            </div>
+          )}
         </div>
         <div className="flex-1 min-w-0 min-h-0 flex flex-col p-6 pb-28 md:pb-6 overflow-y-auto bg-[#0B0D17]/95 md:bg-[#1a1c2e]">
           <h2 className="font-serif text-xl text-gold-300 mb-4 flex items-center gap-2"><Stars className="w-5 h-5 text-purple-400 flex-shrink-0" />{t('dreamMeaningTitle')}</h2>
-          <p className="text-gray-300 leading-relaxed text-sm mb-4 flex-1">{interpretation}</p>
+          <p className="text-gray-300 leading-relaxed text-sm mb-4 flex-1">{current?.interpretation ?? ''}</p>
           {dreamText.trim() && <div className="pt-4 border-t border-white/10 mb-4"><h4 className="text-xs text-gray-500 uppercase tracking-wider mb-2">{t('dreamNote')}</h4><p className="text-sm text-gray-400 italic">"{dreamText.trim()}"</p></div>}
           <div className="flex flex-col gap-3">
             <div className="flex gap-3">
-              <button onClick={() => generatedImage && handleShare(generatedImage, selectedArtist?.name ? `${t('style')} ${selectedArtist.name}` : undefined)} className="flex-1 py-3 rounded-xl border border-white/20 text-white hover:bg-white/10 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Share2 className="w-4 h-4" />{t('share')}</button>
-              <button onClick={() => generatedImage && handleDownload(generatedImage)} className="flex-1 py-3 rounded-xl border border-white/20 text-white hover:bg-white/10 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Download className="w-4 h-4" />{t('download')}</button>
+              <button onClick={() => current && handleShare(current.imageUrl, current.artistName ? `${t('style')} ${current.artistName}` : undefined)} className="flex-1 py-3 rounded-xl border border-white/20 text-white hover:bg-white/10 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Share2 className="w-4 h-4" />{t('share')}</button>
+              <button onClick={() => current && handleDownload(current.imageUrl)} className="flex-1 py-3 rounded-xl border border-white/20 text-white hover:bg-white/10 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Download className="w-4 h-4" />{t('download')}</button>
             </div>
             <button onClick={() => { setShowSuccessView(false); setDreamText(''); }} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 font-bold text-white flex items-center justify-center gap-2 min-h-[52px] touch-manipulation active:scale-[0.98]">
               <Sparkles className="w-5 h-5" />{t('newDreamButton')}
@@ -394,6 +448,7 @@ export default function MainApp() {
       </div>
     </div>
   );
+  };
 
   const homeContent = (
     <>
@@ -416,6 +471,7 @@ export default function MainApp() {
         </section>
         <section className="space-y-3">
           <label className="text-sm font-medium text-purple-200/70 uppercase tracking-widest">{t('artistSelectLabel')}</label>
+          <p className="text-xs text-gray-500">{t('artistSelectHint')}</p>
           <div className="flex overflow-x-auto gap-4 py-4 no-scrollbar snap-x -mx-6 px-6">
             {artistsLoading ? (
               [...Array(5)].map((_, i) => (
@@ -426,9 +482,17 @@ export default function MainApp() {
               ))
             ) : (
               artists.map((artist) => {
-                const isSelected = selectedArtist?.id === artist.id;
+                const isSelected = selectedArtists.some(a => a.id === artist.id);
+                const toggle = () => {
+                  if (isSelected) {
+                    if (selectedArtists.length <= 1) return;
+                    setSelectedArtists(prev => prev.filter(a => a.id !== artist.id));
+                  } else {
+                    setSelectedArtists(prev => [...prev, artist]);
+                  }
+                };
                 return (
-                  <button key={artist.id} onClick={() => setSelectedArtist(artist)} className={`relative flex-shrink-0 w-24 flex flex-col items-center gap-3 snap-center transition-transform duration-300 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:ring-offset-2 focus:ring-offset-[#0B0D17] rounded-2xl ${isSelected ? 'scale-110 opacity-100' : 'opacity-60 scale-95 hover:opacity-80 hover:scale-100'}`}>
+                  <button key={artist.id} onClick={toggle} className={`relative flex-shrink-0 w-24 flex flex-col items-center gap-3 snap-center transition-transform duration-300 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:ring-offset-2 focus:ring-offset-[#0B0D17] rounded-2xl ${isSelected ? 'scale-110 opacity-100' : 'opacity-60 scale-95 hover:opacity-80 hover:scale-100'}`}>
                     <div className={`w-20 h-20 rounded-full p-1 transition-all duration-300 ${isSelected ? 'bg-gradient-to-br from-gold-300 to-amber-600 shadow-[0_0_20px_rgba(250,204,21,0.35)]' : 'border border-white/20'}`}>
                       <img src={artist.imageUrl} alt={artist.name} className="w-full h-full rounded-full object-cover" loading="lazy" />
                     </div>
@@ -449,10 +513,10 @@ export default function MainApp() {
           </div>
         )}
         <section>
-          <button onClick={handleGenerate} disabled={loadingState !== LoadingState.IDLE && loadingState !== LoadingState.COMPLETE && loadingState !== LoadingState.ERROR} className={`w-full py-4 sm:py-5 rounded-xl font-serif font-bold text-base sm:text-lg tracking-wide transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:ring-offset-2 focus:ring-offset-[#0B0D17] min-h-[48px] touch-manipulation ${(loadingState === LoadingState.GENERATING_IMAGE || loadingState === LoadingState.INTERPRETING) ? 'bg-gray-800 cursor-not-allowed text-gray-400' : 'bg-gradient-to-r from-amber-200 via-gold-400 to-amber-600 text-slate-900 hover:shadow-[0_0_30px_rgba(250,204,21,0.4)] hover:scale-[1.01] active:scale-[0.99]'}`}>
+          <button onClick={handleGenerate} disabled={(loadingState !== LoadingState.IDLE && loadingState !== LoadingState.COMPLETE && loadingState !== LoadingState.ERROR) || selectedArtists.length === 0 || (tier === 'FREE' && credits < selectedArtists.length)} className={`w-full py-4 sm:py-5 rounded-xl font-serif font-bold text-base sm:text-lg tracking-wide transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:ring-offset-2 focus:ring-offset-[#0B0D17] min-h-[48px] touch-manipulation ${(loadingState === LoadingState.GENERATING_IMAGE || loadingState === LoadingState.INTERPRETING) ? 'bg-gray-800 cursor-not-allowed text-gray-400' : 'bg-gradient-to-r from-amber-200 via-gold-400 to-amber-600 text-slate-900 hover:shadow-[0_0_30px_rgba(250,204,21,0.4)] hover:scale-[1.01] active:scale-[0.99]'}`}>
             <div className="flex items-center justify-center gap-2">
               {(loadingState === LoadingState.IDLE || loadingState === LoadingState.COMPLETE || loadingState === LoadingState.ERROR) ? (
-                tier === 'FREE' && credits <= 0 ? <span>{t('creditLoadOrUpgrade')}</span> : <><Stars className="w-5 h-5" /><span>{t('generateButton')} ({tier === 'PRO' ? t('generateButtonPro') : t('generateButtonFree')})</span></>
+                tier === 'FREE' && credits < selectedArtists.length ? <span>{t('creditLoadOrUpgrade')}</span> : <><Stars className="w-5 h-5" /><span>{t('generateButton')} ({tier === 'PRO' ? t('generateButtonPro') : `${selectedArtists.length} ${t('creditsUnit')}`})</span></>
               ) : (
                 <><span className="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-900" /><span>{loadingState === LoadingState.GENERATING_IMAGE ? t('loadingImage') : t('loadingInterpret')}</span></>
               )}
@@ -782,7 +846,7 @@ export default function MainApp() {
       <div className="relative z-10 w-full max-w-7xl mx-auto min-h-screen flex flex-col md:flex-row">
         {!showSuccessView && <Sidebar />}
         <div className="flex-1 flex flex-col min-w-0">
-          {showSuccessView && <SuccessView />}
+          {showSuccessView && generatedDreams.length > 0 && <SuccessView />}
           {activeTab === 'home' && !showSuccessView && homeContent}
           {activeTab === 'gallery' && !showSuccessView && galleryContent}
           {activeTab === 'profile' && !showSuccessView && profileContent}
@@ -806,7 +870,9 @@ export default function MainApp() {
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-white">
-                  {loadingState === LoadingState.GENERATING_IMAGE ? t('loadingImage') : t('loadingInterpret')}
+                  {generateProgress
+                    ? `${t('creatingProgress')} ${generateProgress.current}/${generateProgress.total}`
+                    : (loadingState === LoadingState.GENERATING_IMAGE ? t('loadingImage') : t('loadingInterpret'))}
                 </p>
                 <p className="text-sm text-gray-400 mt-1">{t('loadingSubtitle')}</p>
               </div>

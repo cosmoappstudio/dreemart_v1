@@ -4,6 +4,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   tr: {
     // General
     appName: "Dreemart",
+    creatingProgress: "Oluşturuluyor",
     loadingImage: "Tablo Çiziliyor...",
     loadingInterpret: "Yorumlanıyor...",
     loadingSubtitle: "Rüyanız sanat eserine dönüşüyor...",
@@ -18,6 +19,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     dreamInputLabel: "Rüyanı Anlat",
     dreamInputPlaceholder: "Dün gece rüyamda sonsuz bir merdivenden çıkıyordum...",
     artistSelectLabel: "Ressam Seçimi",
+    artistSelectHint: "Birden fazla seçebilirsin (her biri 1 kredi)",
+    creditsUnit: "Kredi",
     generateButton: "Rüyamı Görselleştir",
     generateButtonFree: "1 Kredi",
     generateButtonPro: "∞",
@@ -105,6 +108,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   en: {
     appName: "Dreemart",
+    creatingProgress: "Creating",
     loadingImage: "Painting...",
     loadingInterpret: "Interpreting...",
     loadingSubtitle: "Your dream is becoming art...",
@@ -115,6 +119,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     dreamInputLabel: "Describe Your Dream",
     dreamInputPlaceholder: "Last night I was climbing an infinite staircase...",
     artistSelectLabel: "Choose Artist",
+    artistSelectHint: "Select multiple (each costs 1 credit)",
+    creditsUnit: "Credits",
     generateButton: "Visualize Dream",
     generateButtonFree: "1 Credit",
     generateButtonPro: "∞",
@@ -190,6 +196,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   es: {
     appName: "Dreemart",
+    creatingProgress: "Creando",
     loadingImage: "Pintando...",
     loadingInterpret: "Interpretando...",
     loadingSubtitle: "Tu sueño se convierte en arte...",
@@ -200,6 +207,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     dreamInputLabel: "Describe tu Sueño",
     dreamInputPlaceholder: "Anoche subía por una escalera infinita...",
     artistSelectLabel: "Elegir Artista",
+    artistSelectHint: "Elige varios (cada uno 1 crédito)",
+    creditsUnit: "Créditos",
     generateButton: "Visualizar Sueño",
     generateButtonFree: "1 Crédito",
     generateButtonPro: "∞",
@@ -275,6 +284,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   de: {
     appName: "Dreemart",
+    creatingProgress: "Erstelle",
     loadingImage: "Malen...",
     loadingInterpret: "Deuten...",
     loadingSubtitle: "Dein Traum wird zu Kunst...",
@@ -285,6 +295,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     dreamInputLabel: "Beschreibe deinen Traum",
     dreamInputPlaceholder: "Letzte Nacht stieg ich eine endlose Treppe hinauf...",
     artistSelectLabel: "Künstler Wählen",
+    artistSelectHint: "Mehrere wählbar (je 1 Credit)",
+    creditsUnit: "Credits",
     generateButton: "Traum Visualisieren",
     generateButtonFree: "1 Credit",
     generateButtonPro: "∞",
