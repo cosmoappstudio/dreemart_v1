@@ -359,32 +359,32 @@ export default function MainApp() {
   );
 
   const SuccessView = () => (
-    <div className="fixed inset-0 z-[100] bg-[#0B0D17] flex flex-col animate-fade-in">
-      <div className="relative w-full h-[55vh] flex-shrink-0">
+    <div className="fixed inset-0 z-[100] bg-[#0B0D17] flex flex-col animate-fade-in overflow-hidden">
+      <div className="relative w-full h-[45vh] sm:h-[50vh] min-h-[240px] max-h-[400px] flex-shrink-0">
         <img src={generatedImage!} alt="Generated Dream" className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-[#0B0D17]" />
-        <div className="absolute top-8 px-4 w-full flex justify-between items-start">
-          <div className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-2">
-            <CheckCircle2 className="w-3 h-3 text-green-400" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-[#0B0D17]" />
+        <div className="absolute top-4 sm:top-8 left-4 right-4 flex justify-between items-start">
+          <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
             <span className="text-xs font-bold text-white">{t('savedToGallery')}</span>
           </div>
-          <button onClick={() => setShowSuccessView(false)} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-gold-400" aria-label="Kapat"><X className="w-6 h-6" /></button>
+          <button onClick={() => setShowSuccessView(false)} className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/70 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gold-400 touch-manipulation" aria-label={language === 'tr' ? 'Kapat' : 'Close'}><X className="w-5 h-5" /></button>
         </div>
-        <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-          <span className="text-xs font-bold text-gold-300 uppercase">{selectedArtist?.name} {t('style')}</span>
+        <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-black/60 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border border-white/10">
+          <span className="text-[10px] sm:text-xs font-bold text-gold-300 uppercase">{selectedArtist?.name} {t('style')}</span>
         </div>
       </div>
-      <div className="flex-1 px-6 -mt-6 z-10 flex flex-col overflow-y-auto pb-24">
-        <h2 className="text-2xl font-serif font-bold text-white mb-4 flex items-center gap-2"><Stars className="w-6 h-6 text-gold-400" />{t('dreamMeaningTitle')}</h2>
-        <p className="text-gray-300 leading-relaxed text-lg mb-6">{interpretation}</p>
-        <div className="space-y-3">
-          <button onClick={() => { setShowSuccessView(false); setDreamText(''); }} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 font-bold text-white flex items-center justify-center gap-2">
+      <div className="flex-1 min-h-0 px-4 sm:px-6 -mt-4 sm:-mt-6 z-10 flex flex-col overflow-y-auto pb-28 sm:pb-24">
+        <h2 className="text-xl sm:text-2xl font-serif font-bold text-white mb-3 sm:mb-4 flex items-center gap-2"><Stars className="w-5 h-5 sm:w-6 sm:h-6 text-gold-400 flex-shrink-0" />{t('dreamMeaningTitle')}</h2>
+        <p className="text-gray-300 leading-relaxed text-base sm:text-lg mb-6 max-w-3xl">{interpretation}</p>
+        <div className="space-y-3 mt-auto">
+          <button onClick={() => { setShowSuccessView(false); setDreamText(''); }} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 font-bold text-white flex items-center justify-center gap-2 min-h-[52px] touch-manipulation active:scale-[0.98]">
             <Sparkles className="w-5 h-5" />{t('newDreamButton')}
           </button>
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => generatedImage && handleShare(generatedImage, selectedArtist?.name ? `${t('style')} ${selectedArtist.name}` : undefined)} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2"><Share2 className="w-4 h-4" />{t('share')}</button>
-            <button onClick={() => generatedImage && handleDownload(generatedImage)} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2"><Download className="w-4 h-4" />{t('download')}</button>
-            <button onClick={() => { setShowSuccessView(false); setActiveTab('gallery'); }} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2 col-span-2"><LayoutGrid className="w-4 h-4" />{t('goToGallery')}</button>
+            <button onClick={() => generatedImage && handleShare(generatedImage, selectedArtist?.name ? `${t('style')} ${selectedArtist.name}` : undefined)} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/15 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Share2 className="w-4 h-4" />{t('share')}</button>
+            <button onClick={() => generatedImage && handleDownload(generatedImage)} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/15 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"><Download className="w-4 h-4" />{t('download')}</button>
+            <button onClick={() => { setShowSuccessView(false); setActiveTab('gallery'); }} className="py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/15 flex items-center justify-center gap-2 col-span-2 min-h-[48px] touch-manipulation"><LayoutGrid className="w-4 h-4" />{t('goToGallery')}</button>
           </div>
         </div>
       </div>
