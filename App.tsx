@@ -109,7 +109,6 @@ const LOGIN_GRID_FALLBACK: { image_url: string }[] = [
   { image_url: 'https://picsum.photos/seed/dreemart7/400/500' },
   { image_url: 'https://picsum.photos/seed/dreemart8/400/420' },
 ];
-const GRID_ASPECTS = ['aspect-[3/4]', 'aspect-square', 'aspect-[4/5]', 'aspect-[5/6]', 'aspect-[4/6]', 'aspect-[3/5]', 'aspect-[5/4]', 'aspect-[6/5]'];
 
 function LoginPage() {
   const { signInWithGoogle, user, loading } = useAuth();
@@ -184,18 +183,15 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#0B0D17] flex flex-col lg:flex-row overflow-hidden">
-      {/* Sol: Masonry kart grid - rüya görselleri, dikey scroll animasyon + overlay */}
-      <div className="relative flex-shrink-0 h-[35vh] sm:h-[45vh] lg:h-screen lg:w-1/2 lg:min-w-0 overflow-hidden bg-[#fafafa]">
+      {/* Sol: Simetrik grid - rüya görselleri, dikey scroll, koyu arka plan */}
+      <div className="relative flex-shrink-0 h-[35vh] sm:h-[45vh] lg:h-screen lg:w-1/2 lg:min-w-0 overflow-hidden bg-gray-900">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="login-scroll-strip flex flex-col gap-0">
+          <div className="login-scroll-strip flex flex-col">
             {[1, 2].map((copy) => (
-              <div key={copy} className="flex-shrink-0 p-3 sm:p-4 lg:p-6 flex justify-center">
-                <div className="login-masonry-grid max-w-[280px] sm:max-w-[340px] lg:max-w-[420px]">
-                  {gridExamples.slice(0, 8).map((ex, i) => (
-                    <div
-                      key={`${copy}-${i}`}
-                      className={`login-masonry-item overflow-hidden rounded-2xl shadow-md bg-gray-200 ${GRID_ASPECTS[i % GRID_ASPECTS.length]}`}
-                    >
+              <div key={copy} className="flex-shrink-0 p-2 sm:p-3 flex justify-center items-center">
+                <div className="login-dream-grid">
+                  {gridExamples.slice(0, 9).map((ex, i) => (
+                    <div key={`${copy}-${i}`} className="login-dream-item">
                       <img src={ex.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                     </div>
                   ))}
@@ -204,13 +200,13 @@ function LoginPage() {
             ))}
           </div>
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#fafafa] via-transparent to-transparent pointer-events-none" />
-        <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-5 lg:p-6 pointer-events-none">
-          <div className="bg-gradient-to-t from-[#fafafa] via-[#fafafa]/80 to-transparent -mx-4 sm:-mx-5 lg:-mx-6 -mb-4 sm:-mb-5 lg:-mb-6 px-4 sm:px-5 lg:px-6 pt-12 pb-4 sm:pb-5 lg:pb-6">
-            <h2 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 leading-tight">
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 flex flex-col justify-end items-center p-4 sm:p-5 lg:p-6 pointer-events-none">
+          <div className="w-full max-w-lg text-center pb-2">
+            <h2 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 leading-tight drop-shadow-lg">
               {t.loginSlogan}
             </h2>
-            <p className="text-sm text-gray-600 max-w-md leading-relaxed">
+            <p className="text-sm sm:text-base text-white/90 leading-relaxed drop-shadow-md">
               {t.loginSubtitle}
             </p>
           </div>
