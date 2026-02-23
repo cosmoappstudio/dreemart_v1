@@ -581,7 +581,7 @@ export default function MainApp() {
       <header className="pt-8 pb-6 px-6 flex items-center justify-between md:hidden">
         <div className="flex items-center gap-2 min-w-0">
           {logoUrl ? (
-            <img src={logoUrl} alt="Dreemart" className="h-11 w-auto object-contain flex-shrink-0" />
+            <img src={logoUrl} alt="Dreemart" className="h-14 w-auto object-contain flex-shrink-0" />
           ) : (
             <>
               <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg"><Moon className="w-6 h-6 text-white fill-current" /></div>
@@ -960,7 +960,7 @@ export default function MainApp() {
       <Link to="/" className="flex items-center gap-2 px-4 py-4 mb-4 rounded-xl hover:bg-white/5 transition-colors min-w-0">
         {logoUrl ? (
           <div className="flex flex-col gap-0.5">
-            <img src={logoUrl} alt="Dreemart" className="h-12 w-auto object-contain flex-shrink-0" />
+            <img src={logoUrl} alt="Dreemart" className="h-16 w-auto object-contain flex-shrink-0" />
             <span className="text-[10px] text-gray-500">Ana sayfaya dön</span>
           </div>
         ) : (

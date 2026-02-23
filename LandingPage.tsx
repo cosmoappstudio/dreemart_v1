@@ -115,7 +115,7 @@ export default function LandingPage() {
       <header className="relative z-20 flex items-center justify-between gap-2 px-4 sm:px-6 py-4 sm:py-5 max-w-6xl mx-auto pt-safe mt-2 sm:mt-4">
         <Link to="/" className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           {logoUrl ? (
-            <img src={logoUrl} alt="Dreemart" className="h-12 w-auto sm:h-14 md:h-16 object-contain flex-shrink-0" />
+            <img src={logoUrl} alt="Dreemart" className="h-14 w-auto sm:h-16 md:h-20 object-contain flex-shrink-0" />
           ) : (
             <>
               <div className="p-1.5 sm:p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg sm:rounded-xl flex-shrink-0">
@@ -483,7 +483,7 @@ export default function LandingPage() {
         <section className="py-10 sm:py-16 border-t border-white/5 max-w-2xl mx-auto px-1">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-white text-center mb-6 sm:mb-10 px-2">{t.faqTitle}</h2>
           <div className="space-y-2 sm:space-y-3">
-            {(Array.from({ length: 10 }, (_, i) => i + 1) as const).map((i) => (
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((i) => (
               <div key={i} className="rounded-lg sm:rounded-xl bg-white/5 border border-white/10 overflow-hidden">
                 <button type="button" onClick={() => { const next = openFaq === i ? null : i; if (next) { trackEvent('faq_open', { faq_index: String(i) }); metaTrackCustom('faq_open', { faq_index: String(i) }); } setOpenFaq(next); }} className="w-full flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 sm:py-4 text-left text-white font-medium hover:bg-white/5 min-h-[48px] touch-manipulation">
                   <span className="text-xs sm:text-sm pr-2">{(t as Record<string, string>)[`faq${i}Q`]}</span>
@@ -518,7 +518,7 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8 sm:gap-10 mb-8 sm:mb-10">
             <div className="flex items-center gap-2">
               {logoUrl ? (
-                <img src={logoUrl} alt="Dreemart" className="h-10 w-auto sm:h-12 object-contain flex-shrink-0" />
+                <img src={logoUrl} alt="Dreemart" className="h-12 w-auto sm:h-14 object-contain flex-shrink-0" />
               ) : (
                 <>
                   <Moon className="w-7 h-7 sm:w-8 sm:h-8 text-white fill-current flex-shrink-0" />
