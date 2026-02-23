@@ -27,45 +27,76 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const body = req.body as { userId: string; credits?: number; addCredits?: number };
-  const { userId, credits: setCredits, addCredits } = body;
-  if (!userId || (setCredits == null && (addCredits == null || addCredits < 1))) {
-    return res.status(400).json({ error: 'userId and either credits (set) or addCredits (positive) required' });
+  const body = req.body as {
+    userId: string;
+    credits?: number;
+    addCredits?: number;
+    addPack?: { packId: string };
+    removePack?: boolean;
+  };
+  const { userId, credits: setCredits, addCredits, addPack, removePack } = body;
+
+  const hasOp = setCredits != null || (addCredits != null && addCredits >= 1) || (addPack?.packId) || removePack;
+  if (!userId || !hasOp) {
+    return res.status(400).json({ error: 'userId and one of: credits, addCredits, addPack, removePack required' });
+  }
+  if ([setCredits != null, addCredits != null && addCredits >= 1, !!addPack?.packId, !!removePack].filter(Boolean).length > 1) {
+    return res.status(400).json({ error: 'Only one operation at a time' });
   }
 
-  const { data: target } = await admin.from('profiles').select('id, credits').eq('id', userId).single();
+  const { data: target } = await admin.from('profiles').select('id, credits, last_purchased_pack_id').eq('id', userId).single();
   if (!target) {
     return res.status(404).json({ error: 'User not found' });
   }
 
-  let newCredits: number;
-  let amount: number;
+  let newCredits: number = target.credits ?? 0;
+  let amount = 0;
+  let lastPurchasedPackId: string | null = target.last_purchased_pack_id ?? null;
 
-  if (setCredits != null) {
+  if (addPack?.packId) {
+    const { data: pack } = await admin.from('pricing_packs').select('id, credits_amount').eq('id', addPack.packId).single();
+    if (!pack) return res.status(404).json({ error: 'Pack not found' });
+    const add = Math.max(0, pack.credits_amount ?? 0);
+    newCredits += add;
+    amount = add;
+    lastPurchasedPackId = pack.id;
+  } else if (removePack) {
+    lastPurchasedPackId = null;
+    amount = 0;
+  } else if (setCredits != null) {
     newCredits = Math.max(0, Math.floor(setCredits));
     amount = newCredits - (target.credits ?? 0);
-  } else {
-    const add = Math.max(1, Math.floor(addCredits!));
-    newCredits = (target.credits ?? 0) + add;
+  } else if (addCredits != null && addCredits >= 1) {
+    const add = Math.max(1, Math.floor(addCredits));
+    newCredits += add;
     amount = add;
   }
 
+  const updatePayload: Record<string, unknown> = { credits: newCredits, updated_at: new Date().toISOString() };
+  if (addPack?.packId !== undefined) updatePayload.last_purchased_pack_id = lastPurchasedPackId;
+  if (removePack) updatePayload.last_purchased_pack_id = null;
+
   const { error: updateErr } = await admin
     .from('profiles')
-    .update({ credits: newCredits, updated_at: new Date().toISOString() })
+    .update(updatePayload)
     .eq('id', userId);
 
   if (updateErr) {
     console.error('set-credits update error:', updateErr);
-    return res.status(500).json({ error: 'Failed to update credits' });
+    return res.status(500).json({ error: 'Failed to update profile' });
   }
 
-  await admin.from('credit_transactions').insert({
-    user_id: userId,
-    amount,
-    reason: 'admin_adjustment',
-    reference_id: null,
-  });
+  if (amount !== 0) {
+    await admin.from('credit_transactions').insert({
+      user_id: userId,
+      amount,
+      reason: 'admin_adjustment',
+      reference_id: addPack?.packId ?? null,
+    });
+  }
 
-  return res.status(200).json({ credits: newCredits });
+  return res.status(200).json({
+    credits: newCredits,
+    last_purchased_pack_id: lastPurchasedPackId,
+  });
 }

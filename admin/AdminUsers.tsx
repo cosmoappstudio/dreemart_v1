@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase, getApiUrl } from '../lib/supabase';
-import { Search, User, Ban, CheckCircle, Loader2, Filter } from 'lucide-react';
+import { Search, User, Ban, CheckCircle, Loader2, Filter, Plus, X, Zap, Gift } from 'lucide-react';
+
+const QUICK_ADD_AMOUNTS = [5, 10, 25, 50];
 
 interface ProfileRow {
   id: string;
@@ -64,6 +66,114 @@ function isInDateRange(createdAt: string, range: DateRangeKey): boolean {
   return d >= cutoff;
 }
 
+function CreditCell({ p, setCredits, addCredits, savingId, supabase }: { p: ProfileRow; setCredits: (id: string, n: number) => void; addCredits: (id: string, n: number) => void; savingId: string | null; supabase: boolean }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30">
+          <Zap className="w-3.5 h-3.5 text-amber-400" />
+          <span className="font-semibold text-amber-200 tabular-nums">{p.credits}</span>
+        </span>
+        <input
+          type="number"
+          min={0}
+          value={p.credits}
+          onChange={(e) => setCredits(p.id, parseInt(e.target.value, 10) || 0)}
+          disabled={!supabase}
+          className="w-16 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50"
+          title="Doğrudan düzenle"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1">
+          <Gift className="w-3 h-3" /> Hediye
+        </span>
+        {QUICK_ADD_AMOUNTS.map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => addCredits(p.id, n)}
+            disabled={!supabase || savingId === p.id}
+            className="px-2 py-1 rounded-lg text-xs font-medium bg-emerald-600/60 hover:bg-emerald-500/80 text-emerald-100 border border-emerald-500/30 disabled:opacity-50 transition-colors touch-manipulation"
+          >
+            +{n}
+          </button>
+        ))}
+        <input
+          type="number"
+          min={1}
+          max={999}
+          placeholder="Özel"
+          id={`gift-${p.id}`}
+          className="w-14 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white placeholder-gray-500 focus:ring-1 focus:ring-indigo-500/50"
+          onKeyDown={(e) => { if (e.key === 'Enter') { const el = document.getElementById(`gift-${p.id}`) as HTMLInputElement | null; const n = el ? parseInt(el.value, 10) : 0; if (n >= 1) addCredits(p.id, n); } }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            const el = document.getElementById(`gift-${p.id}`) as HTMLInputElement | null;
+            const n = el ? parseInt(el.value, 10) : 10;
+            addCredits(p.id, isNaN(n) || n < 1 ? 10 : n);
+          }}
+          disabled={!supabase || savingId === p.id}
+          className="px-2 py-1 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50 flex items-center gap-1 touch-manipulation"
+          title="Hediye kredi ekle"
+        >
+          {savingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+          Ekle
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PackCell({ p, packs, addPack, removePack, savingId, supabase }: { p: ProfileRow; packs: { id: string; name: string; credits_amount: number }[]; addPack: (id: string, packId: string) => void; removePack: (id: string) => void; savingId: string | null; supabase: boolean }) {
+  return (
+    <div className="flex flex-col gap-1.5 min-w-[120px]">
+      <span className="text-sm text-gray-400" title={p.last_purchased_pack_id ?? ''}>
+        {p.pricing_packs?.name ?? (p.last_purchased_pack_id ? '…' : '—')}
+      </span>
+      {p.last_purchased_pack_id ? (
+        <button
+          type="button"
+          onClick={() => removePack(p.id)}
+          disabled={!supabase || savingId === p.id}
+          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-red-600/60 hover:bg-red-500/80 text-white disabled:opacity-50 w-fit touch-manipulation"
+          title="Paketi kaldır"
+        >
+          <X className="w-3 h-3" /> Çıkart
+        </button>
+      ) : (
+        <div className="flex items-center gap-1 flex-wrap">
+          <select
+            id={`pack-${p.id}`}
+            className="flex-1 min-w-0 max-w-[90px] bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white focus:ring-1 focus:ring-indigo-500/50"
+          >
+            {packs.map((pk) => (
+              <option key={pk.id} value={pk.id}>
+                {pk.name} (+{pk.credits_amount})
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => {
+              const el = document.getElementById(`pack-${p.id}`) as HTMLSelectElement | null;
+              const packId = el?.value;
+              if (packId) addPack(p.id, packId);
+            }}
+            disabled={!supabase || savingId === p.id || packs.length === 0}
+            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-emerald-600/80 hover:bg-emerald-500 text-white disabled:opacity-50 shrink-0 touch-manipulation"
+            title="Paket ekle"
+          >
+            <Plus className="w-3 h-3" /> Ekle
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminUsers() {
   const [list, setList] = useState<ProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +190,7 @@ export default function AdminUsers() {
   const [dateTo, setDateTo] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
   const [creditError, setCreditError] = useState<string | null>(null);
+  const [packs, setPacks] = useState<{ id: string; name: string; credits_amount: number }[]>([]);
 
   useEffect(() => {
     if (!supabase) {
@@ -101,6 +212,9 @@ export default function AdminUsers() {
         setList(rows);
         setLoading(false);
       });
+    supabase.from('pricing_packs').select('id, name, credits_amount').order('sort_order').then(({ data }) => {
+      setPacks((data || []) as { id: string; name: string; credits_amount: number }[]);
+    });
   }, []);
 
   const filtered = list.filter((p) => {
@@ -195,13 +309,87 @@ export default function AdminUsers() {
     setSavingId(null);
   };
 
+  /** Kullanıcıya paket uygula: kredi ekler + last_purchased_pack_id set eder (tüm ressamlara erişim) */
+  const addPack = async (id: string, packId: string) => {
+    if (!supabase || !packId) return;
+    setCreditError(null);
+    setSavingId(id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setCreditError('Oturum bulunamadı. Yeniden giriş yapın.');
+        setSavingId(null);
+        return;
+      }
+      const res = await fetch(getApiUrl('/api/admin/set-credits'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ userId: id, addPack: { packId } }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCreditError(data?.error || `Paket eklenemedi (${res.status})`);
+        setSavingId(null);
+        return;
+      }
+      const pack = packs.find((x) => x.id === packId);
+      setList((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                credits: data.credits ?? p.credits,
+                last_purchased_pack_id: packId,
+                pricing_packs: pack ? { name: pack.name } : p.pricing_packs,
+              }
+            : p
+        )
+      );
+    } catch (e) {
+      setCreditError(e instanceof Error ? e.message : 'Bağlantı hatası');
+    }
+    setSavingId(null);
+  };
+
+  /** Paketi kaldır: last_purchased_pack_id = null (kullanıcı tekrar sadece ilk N ressama erişir) */
+  const removePack = async (id: string) => {
+    if (!supabase) return;
+    setCreditError(null);
+    setSavingId(id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setCreditError('Oturum bulunamadı. Yeniden giriş yapın.');
+        setSavingId(null);
+        return;
+      }
+      const res = await fetch(getApiUrl('/api/admin/set-credits'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ userId: id, removePack: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCreditError(data?.error || `Paket kaldırılamadı (${res.status})`);
+        setSavingId(null);
+        return;
+      }
+      setList((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, last_purchased_pack_id: null, pricing_packs: null } : p))
+      );
+    } catch (e) {
+      setCreditError(e instanceof Error ? e.message : 'Bağlantı hatası');
+    }
+    setSavingId(null);
+  };
+
   const hasActiveFilters = roleFilter !== 'all' || statusFilter !== 'all' || packFilter !== 'all' || languageFilter !== 'all' || dateRange !== 'all' || !!dateFrom || !!dateTo;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Kullanıcılar</h1>
-        <p className="text-gray-400 text-sm mt-1">Kullanıcı listesi, kredi (doğrudan düzenle veya hediye ekle) ve yasaklama</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-white">Kullanıcılar</h1>
+        <p className="text-gray-400 text-xs sm:text-sm mt-1">Kullanıcı listesi, kredi ve paket yönetimi</p>
       </div>
 
       {noBackend && (
@@ -271,7 +459,7 @@ export default function AdminUsers() {
             <Filter className="w-4 h-4" />
             Filtreler
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Rol</label>
               <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as RoleFilter)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50">
@@ -347,11 +535,12 @@ export default function AdminUsers() {
           </div>
         ) : (
           <>
-            <div className="px-4 py-2 border-b border-gray-800 text-sm text-gray-400">
+            <div className="px-3 sm:px-4 py-2 border-b border-gray-800 text-xs sm:text-sm text-gray-400">
               {filtered.length} kullanıcı listeleniyor
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
+            {/* Masaüstü: tablo */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-left min-w-[900px]">
                 <thead className="bg-gray-800/80 text-gray-300 text-xs uppercase tracking-wider">
                   <tr>
                     <th className="p-3 font-medium">Kullanıcı</th>
@@ -382,41 +571,7 @@ export default function AdminUsers() {
                         </div>
                       </td>
                       <td className="p-3">
-                        <div className="flex flex-col gap-1.5">
-                          <input
-                            type="number"
-                            min={0}
-                            value={p.credits}
-                            onChange={(e) => setCredits(p.id, parseInt(e.target.value, 10) || 0)}
-                            disabled={!supabase}
-                            className="w-20 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50"
-                            title="Toplam kredi (doğrudan düzenle veya aşağıdan hediye ekle)"
-                          />
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              min={1}
-                              max={999}
-                              defaultValue={10}
-                              className="w-14 bg-gray-800 border border-gray-700 rounded px-1.5 py-1 text-xs text-white focus:ring-1 focus:ring-indigo-500/50"
-                              id={`gift-${p.id}`}
-                              placeholder="+"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const el = document.getElementById(`gift-${p.id}`) as HTMLInputElement | null;
-                                const n = el ? parseInt(el.value, 10) : 10;
-                                addCredits(p.id, isNaN(n) || n < 1 ? 10 : n);
-                              }}
-                              disabled={!supabase || savingId === p.id}
-                              className="text-xs px-2 py-1 rounded bg-emerald-600/80 hover:bg-emerald-500 text-white disabled:opacity-50"
-                              title="Hediye kredi ekle (satın alma gerekmez)"
-                            >
-                              Ekle
-                            </button>
-                          </div>
-                        </div>
+                        <CreditCell p={p} setCredits={setCredits} addCredits={addCredits} savingId={savingId} supabase={!!supabase} />
                       </td>
                       <td className="p-3">
                         <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${p.role === 'admin' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-gray-700 text-gray-300'}`}>
@@ -424,9 +579,7 @@ export default function AdminUsers() {
                         </span>
                       </td>
                       <td className="p-3">
-                        <span className="text-sm text-gray-400" title={p.last_purchased_pack_id ?? ''}>
-                          {p.pricing_packs?.name ?? (p.last_purchased_pack_id ? '…' : '—')}
-                        </span>
+                        <PackCell p={p} packs={packs} addPack={addPack} removePack={removePack} savingId={savingId} supabase={!!supabase} />
                       </td>
                       <td className="p-3">
                         <span className="text-sm text-gray-400 uppercase">{(p.language || 'tr')}</span>
@@ -462,6 +615,70 @@ export default function AdminUsers() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobil: kartlar */}
+            <div className="lg:hidden divide-y divide-gray-800">
+              {filtered.map((p) => (
+                <div key={p.id} className="p-4 hover:bg-gray-800/20 transition-colors">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-sm font-medium text-gray-300 overflow-hidden flex-shrink-0">
+                        {p.avatar_url ? (
+                          <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          (p.full_name?.[0] || p.email?.[0] || '?').toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-white truncate">{p.full_name || '-'}</p>
+                        <p className="text-xs text-gray-500 truncate">{p.email || '-'}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${p.role === 'admin' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-gray-700 text-gray-300'}`}>
+                            {p.role}
+                          </span>
+                          <span className="text-xs text-gray-500 uppercase">{(p.language || 'tr')}</span>
+                          {p.is_banned ? (
+                            <span className="inline-flex items-center gap-1 text-red-400 text-xs">
+                              <Ban className="w-3 h-3" /> Yasaklı
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-emerald-400 text-xs">
+                              <CheckCircle className="w-3 h-3" /> Aktif
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {banConfirm === p.id ? (
+                        <span className="flex items-center gap-2">
+                          <button onClick={() => toggleBan(p.id, p.is_banned)} className="text-xs px-2 py-1.5 rounded bg-red-600 text-white hover:bg-red-500 touch-manipulation">Onayla</button>
+                          <button onClick={() => setBanConfirm(null)} className="text-xs px-2 py-1.5 rounded bg-gray-700 text-gray-300 hover:bg-gray-600 touch-manipulation">İptal</button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setBanConfirm(p.id)}
+                          disabled={savingId === p.id || !supabase}
+                          className={`text-xs px-3 py-1.5 rounded font-medium touch-manipulation min-h-[44px] ${p.is_banned ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-red-600/80 hover:bg-red-500 text-white'} disabled:opacity-50`}
+                        >
+                          {savingId === p.id ? '...' : p.is_banned ? 'Aç' : 'Yasakla'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1.5">Kredi</p>
+                      <CreditCell p={p} setCredits={setCredits} addCredits={addCredits} savingId={savingId} supabase={!!supabase} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1.5">Son paket</p>
+                      <PackCell p={p} packs={packs} addPack={addPack} removePack={removePack} savingId={savingId} supabase={!!supabase} />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </>
         )}

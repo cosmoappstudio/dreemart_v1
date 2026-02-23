@@ -34,7 +34,7 @@ function Breadcrumb() {
   const base = `/${ADMIN_PATH}`;
   const current = ROUTE_KEYS.find((r) => r.key === '' ? loc.pathname === base : loc.pathname.startsWith(`${base}${r.key}`)) ?? ROUTE_KEYS[0];
   return (
-    <nav className="flex items-center gap-2 text-sm text-gray-400 mb-6">
+    <nav className="flex items-center gap-2 text-xs sm:text-sm text-gray-400 overflow-hidden min-w-0 flex-1 truncate">
       <span>Admin</span>
       <span>/</span>
       <span className="text-white font-medium">{current.label}</span>
@@ -53,7 +53,7 @@ export default function AdminApp() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 flex">
+    <div className="min-h-screen min-h-[100dvh] bg-gray-950 text-gray-100 flex flex-col md:flex-row overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setSidebarOpen(false)} aria-hidden />
@@ -61,7 +61,7 @@ export default function AdminApp() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-gray-900 border-r border-gray-800 flex flex-col transition-transform duration-200 md:translate-x-0 ${
+        className={`fixed md:static inset-y-0 left-0 z-50 w-[min(280px,85vw)] md:w-64 bg-gray-900 border-r border-gray-800 flex flex-col transition-transform duration-200 md:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -87,7 +87,7 @@ export default function AdminApp() {
                 end={key === ''}
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  `flex items-center gap-3 px-3 py-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors touch-manipulation ${
                     isActive ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                   }`
                 }
@@ -113,18 +113,18 @@ export default function AdminApp() {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 flex items-center gap-4 px-4 py-3 bg-gray-950/80 backdrop-blur border-b border-gray-800 md:px-6">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+        <header className="sticky top-0 z-30 flex items-center gap-3 px-3 py-3 sm:px-4 md:px-6 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800 shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white"
+            className="md:hidden p-2.5 -ml-1 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Menüyü aç"
           >
             <Menu className="w-6 h-6" />
           </button>
           <Breadcrumb />
         </header>
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto overscroll-contain">
           <Routes>
             <Route index element={<AdminDashboard />} />
             <Route path="sales" element={<AdminSales />} />
