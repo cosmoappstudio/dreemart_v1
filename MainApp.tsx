@@ -4,7 +4,7 @@ import { supabase, getApiUrl } from './lib/supabase';
 import { ARTISTS as FALLBACK_ARTISTS } from './constants';
 import { Artist, LoadingState, DreamRecord, Language } from './types';
 import { TRANSLATIONS } from './translations';
-import { trackEvent, trackBeginCheckout, trackViewItemList } from './lib/analytics';
+import { trackEvent, trackBeginCheckout, trackViewItemList, setPendingPurchase } from './lib/analytics';
 import { metaViewContent, metaInitiateCheckout, metaTrackCustom } from './lib/metaPixel';
 import { Link } from 'react-router-dom';
 import { ADMIN_PATH } from './lib/adminPath';
@@ -326,6 +326,7 @@ export default function MainApp() {
       currency: 'USD',
       items: [{ item_id: planId, item_name: itemName, price: priceUsd }],
     });
+    setPendingPurchase({ packId: planId, value: priceUsd, itemName, country: profile?.country_code ?? undefined });
     metaInitiateCheckout({
       content_ids: [planId],
       content_type: 'product',

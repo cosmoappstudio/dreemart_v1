@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { trackEvent } from '../lib/analytics';
+import { trackEvent, maybeTrackPurchaseFromPending } from '../lib/analytics';
 import { metaLead, metaTrackCustom } from '../lib/metaPixel';
 
 export interface Profile {
@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     let profileData = data as Profile | null;
+    if (profileData?.last_purchased_pack_id) maybeTrackPurchaseFromPending(profileData.last_purchased_pack_id);
     if (profileData && (profileData.username == null || profileData.username.trim() === '')) {
       const username = 'rüyacı_' + Math.random().toString(36).slice(2, 12);
       const { error: updateErr } = await supabase.from('profiles').update({ username, updated_at: new Date().toISOString() }).eq('id', uid);
@@ -73,6 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (payload) => {
           const row = payload.new as Record<string, unknown>;
           if (row && typeof row === 'object') {
+            const newPackId = (row.last_purchased_pack_id as string | null) ?? null;
+            if (newPackId) maybeTrackPurchaseFromPending(newPackId);
             setProfileState({
               id: String(row.id ?? ''),
               email: row.email as string | null,
@@ -84,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               tier: String(row.tier ?? 'free'),
               language: String(row.language ?? 'tr'),
               is_banned: Boolean(row.is_banned),
-              last_purchased_pack_id: (row.last_purchased_pack_id as string | null) ?? null,
+              last_purchased_pack_id: newPackId,
               country_code: (row.country_code as string | null) ?? null,
             });
           }

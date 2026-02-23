@@ -48,8 +48,9 @@ export function pageView(path: string, title?: string): void {
   });
 }
 
+/** GA4 + Google Ads: download_clicked, cta_click, paywall_opened, dream_generated, login, share_clicked vb. */
 export function trackEvent(eventName: string, params?: Record<string, string | number | boolean | unknown[]>): void {
-  if (!MEASUREMENT_ID || !window.gtag) return;
+  if (!window.gtag) return;
   window.gtag('event', eventName, params);
 }
 
@@ -63,9 +64,9 @@ export function trackViewItemList(params: { items: Array<{ item_id: string; item
   });
 }
 
-/** GA4 e-commerce: begin_checkout (user clicks pack, opens payment) */
+/** GA4 + Google Ads: begin_checkout (user clicks pack, opens payment) */
 export function trackBeginCheckout(params: { value: number; currency?: string; items: Array<{ item_id: string; item_name: string; price: number; quantity?: number }> }): void {
-  if (!MEASUREMENT_ID || !window.gtag) return;
+  if (!window.gtag) return;
   const { value, currency = 'USD', items } = params;
   window.gtag('event', 'begin_checkout', {
     currency,
@@ -79,20 +80,67 @@ export function trackBeginCheckout(params: { value: number; currency?: string; i
   });
 }
 
-/** GA4 e-commerce: purchase (for server-side or when payment confirmed) */
-export function trackPurchase(params: { value: number; currency?: string; transaction_id?: string; items: Array<{ item_id: string; item_name: string; price: number; quantity?: number }> }): void {
-  if (!MEASUREMENT_ID || !window.gtag) return;
+/** GA4 + Google Ads: purchase (client-side when payment confirmed). Params: currency, value, transaction_id, items (country içerebilir) */
+export function trackPurchase(params: {
+  value: number;
+  currency?: string;
+  transaction_id?: string;
+  items: Array<{ item_id: string; item_name: string; price: number; quantity?: number; country?: string }>;
+}): void {
+  if (!window.gtag) return;
   const { value, currency = 'USD', transaction_id, items } = params;
   const eventParams: Record<string, unknown> = {
     currency,
     value,
-    items: items.map((i) => ({
-      item_id: i.item_id,
-      item_name: i.item_name,
-      price: i.price,
-      quantity: i.quantity ?? 1,
-    })),
+    items: items.map((i) => {
+      const item: Record<string, unknown> = {
+        item_id: i.item_id,
+        item_name: i.item_name,
+        price: i.price,
+        quantity: i.quantity ?? 1,
+      };
+      if (i.country) item.country = i.country;
+      return item;
+    }),
   };
   if (transaction_id) eventParams.transaction_id = transaction_id;
   window.gtag('event', 'purchase', eventParams);
+}
+
+const PENDING_PURCHASE_KEY = 'dreemart_pending_purchase';
+const PENDING_MAX_AGE_MS = 60 * 60 * 1000; // 1 saat
+
+/** Begin checkout çağrıldığında bekleyen satın alma bilgisini sakla (purchase event için) */
+export function setPendingPurchase(params: { packId: string; value: number; itemName: string; country?: string }): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(
+      PENDING_PURCHASE_KEY,
+      JSON.stringify({ ...params, ts: Date.now() })
+    );
+  } catch {
+    // ignore
+  }
+}
+
+/** Profile last_purchased_pack_id güncellendiğinde çağrılır; eşleşen pending varsa purchase event gönderir */
+export function maybeTrackPurchaseFromPending(packId: string): void {
+  if (!window.gtag) return;
+  try {
+    const raw = sessionStorage.getItem(PENDING_PURCHASE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw) as { packId: string; value: number; itemName: string; country?: string; ts: number };
+    if (data.packId !== packId) return;
+    if (Date.now() - data.ts > PENDING_MAX_AGE_MS) return;
+    sessionStorage.removeItem(PENDING_PURCHASE_KEY);
+    const item = { item_id: packId, item_name: data.itemName, price: data.value, country: data.country };
+    trackPurchase({
+      value: data.value,
+      currency: 'USD',
+      transaction_id: `ls-${packId}-${data.ts}`,
+      items: [item],
+    });
+  } catch {
+    sessionStorage.removeItem(PENDING_PURCHASE_KEY);
+  }
 }
