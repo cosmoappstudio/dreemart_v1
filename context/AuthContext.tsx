@@ -101,6 +101,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const isOAuthCallback =
       typeof window !== 'undefined' &&
       (/#.*access_token=/.test(window.location.hash) || /[?&]code=/.test(window.location.search));
+    const hasOAuthError = typeof window !== 'undefined' && /[?&]error=/.test(window.location.search);
+
+    if (typeof window !== 'undefined' && (isOAuthCallback || hasOAuthError)) {
+      console.debug('[Auth] OAuth callback URL:', {
+        path: window.location.pathname,
+        hasHash: !!window.location.hash,
+        hasCode: /[?&]code=/.test(window.location.search),
+        hasError: hasOAuthError,
+        errorCode: hasOAuthError ? new URLSearchParams(window.location.search).get('error_code') : null,
+      });
+    }
 
     const applySession = (session: { user: User } | null) => {
       setUser(session?.user ?? null);
@@ -110,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           window.history.replaceState(null, '', window.location.pathname + window.location.search);
         }
       } else {
-        if (!isOAuthCallback) setLoading(false);
+        if (!isOAuthCallback || hasOAuthError) setLoading(false);
       }
     };
 
