@@ -124,7 +124,7 @@ export default function AdminApp() {
           </button>
           <Breadcrumb />
         </header>
-        <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto overscroll-contain">
+        <main className="flex-1 min-h-0 p-3 sm:p-4 md:p-6 overflow-y-auto overflow-x-hidden overscroll-contain">
           <Routes>
             <Route index element={<AdminDashboard />} />
             <Route path="sales" element={<AdminSales />} />
