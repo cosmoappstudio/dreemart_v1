@@ -201,12 +201,12 @@ function LoginPage() {
           </div>
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent pointer-events-none" />
-        <div className="absolute inset-0 flex flex-col justify-end items-center p-4 sm:p-5 lg:p-6 pointer-events-none">
-          <div className="w-full max-w-lg text-center pb-2">
-            <h2 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 leading-tight drop-shadow-lg">
+        <div className="absolute inset-0 flex flex-col justify-center items-center p-4 sm:p-5 lg:p-6 pointer-events-none">
+          <div className="w-full max-w-xl text-center">
+            <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-3 leading-tight drop-shadow-lg">
               {t.loginSlogan}
             </h2>
-            <p className="text-sm sm:text-base text-white/90 leading-relaxed drop-shadow-md">
+            <p className="text-base sm:text-lg lg:text-xl text-white/95 leading-relaxed drop-shadow-md">
               {t.loginSubtitle}
             </p>
           </div>
