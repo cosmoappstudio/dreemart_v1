@@ -53,15 +53,15 @@ export default function AdminApp() {
   };
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-gray-950 text-gray-100 flex flex-col md:flex-row overflow-hidden">
+    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col md:flex-row">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setSidebarOpen(false)} aria-hidden />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - md üstünde sol sabit */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 w-[min(280px,85vw)] md:w-64 bg-gray-900 border-r border-gray-800 flex flex-col transition-transform duration-200 md:translate-x-0 ${
+        className={`fixed md:sticky md:top-0 inset-y-0 left-0 z-50 w-[min(280px,85vw)] md:w-64 md:h-screen bg-gray-900 border-r border-gray-800 flex flex-col transition-transform duration-200 md:translate-x-0 shrink-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -77,7 +77,7 @@ export default function AdminApp() {
           </button>
         </div>
         <div className="px-2 py-3 text-xs text-gray-500 uppercase tracking-wider">Admin Panel</div>
-        <nav className="flex-1 flex flex-col gap-0.5 px-2">
+        <nav className="flex-1 flex flex-col gap-0.5 px-2 overflow-y-auto min-h-0">
           {ROUTE_KEYS.map(({ key, label, icon: Icon }) => {
             const path = adminRoute(key ? `/admin${key}` : '/admin');
             return (
@@ -98,7 +98,7 @@ export default function AdminApp() {
             );
           })}
         </nav>
-        <div className="p-3 border-t border-gray-800">
+        <div className="p-3 border-t border-gray-800 shrink-0">
           <div className="px-3 py-2 text-xs text-gray-500 truncate" title={profile?.email ?? ''}>
             {profile?.email ?? 'Admin'}
           </div>
@@ -112,8 +112,8 @@ export default function AdminApp() {
         </div>
       </aside>
 
-      {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+      {/* Main - normal doküman scroll (flex-1 ile genişlik, içerik yüksekliğe göre sayfa scroll) */}
+      <div className="flex-1 min-w-0 w-full flex flex-col">
         <header className="sticky top-0 z-30 flex items-center gap-3 px-3 py-3 sm:px-4 md:px-6 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800 shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -124,7 +124,7 @@ export default function AdminApp() {
           </button>
           <Breadcrumb />
         </header>
-        <main className="flex-1 min-h-0 p-3 sm:p-4 md:p-6 overflow-y-auto overflow-x-hidden overscroll-contain">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 min-h-0 overflow-x-hidden">
           <Routes>
             <Route index element={<AdminDashboard />} />
             <Route path="sales" element={<AdminSales />} />
