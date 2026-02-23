@@ -99,18 +99,23 @@ const LANG_OPTIONS: { code: Language; flag: string; label: string }[] = [
   { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
 ];
 
-const LOGIN_SLIDER_FALLBACK: { image_url: string }[] = [
-  { image_url: 'https://picsum.photos/seed/dreemart1/800/600' },
-  { image_url: 'https://picsum.photos/seed/dreemart2/800/600' },
-  { image_url: 'https://picsum.photos/seed/dreemart3/800/600' },
-  { image_url: 'https://picsum.photos/seed/dreemart4/800/600' },
+const LOGIN_GRID_FALLBACK: { image_url: string }[] = [
+  { image_url: 'https://picsum.photos/seed/dreemart1/400/500' },
+  { image_url: 'https://picsum.photos/seed/dreemart2/400/400' },
+  { image_url: 'https://picsum.photos/seed/dreemart3/400/600' },
+  { image_url: 'https://picsum.photos/seed/dreemart4/400/450' },
+  { image_url: 'https://picsum.photos/seed/dreemart5/400/550' },
+  { image_url: 'https://picsum.photos/seed/dreemart6/400/380' },
+  { image_url: 'https://picsum.photos/seed/dreemart7/400/500' },
+  { image_url: 'https://picsum.photos/seed/dreemart8/400/420' },
 ];
+const GRID_ASPECTS = ['aspect-[3/4]', 'aspect-square', 'aspect-[4/5]', 'aspect-[5/6]', 'aspect-[4/6]', 'aspect-[3/5]', 'aspect-[5/4]', 'aspect-[6/5]'];
 
 function LoginPage() {
   const { signInWithGoogle, user, loading } = useAuth();
   const location = useLocation();
   const [message, setMessage] = useState<string | null>(null);
-  const [sliderExamples, setSliderExamples] = useState<{ image_url: string }[]>(LOGIN_SLIDER_FALLBACK);
+  const [gridExamples, setGridExamples] = useState<{ image_url: string }[]>(LOGIN_GRID_FALLBACK);
   const [lang, setLang] = useState<Language>(() => {
     try {
       const s = typeof localStorage !== 'undefined' ? localStorage.getItem('dreemart_lang') : null;
@@ -125,8 +130,10 @@ function LoginPage() {
   useEffect(() => {
     if (!supabase) return;
     supabase.from('landing_examples').select('image_url').order('sort_order').then(({ data }) => {
-      if (data && data.length >= 2) {
-        setSliderExamples(data);
+      if (data && data.length >= 3) {
+        const merged = [...data];
+        while (merged.length < 8) merged.push(LOGIN_GRID_FALLBACK[merged.length % LOGIN_GRID_FALLBACK.length]);
+        setGridExamples(merged.slice(0, 8));
       }
     });
   }, []);
@@ -159,25 +166,36 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#0B0D17] flex flex-col lg:flex-row overflow-hidden">
-      {/* Sol: Tam ekran rüya görselleri - dikey scroll animasyon + overlay */}
-      <div className="relative flex-shrink-0 h-[35vh] sm:h-[45vh] lg:h-screen lg:w-1/2 lg:min-w-0 overflow-hidden bg-gray-900">
+      {/* Sol: Masonry kart grid - rüya görselleri, dikey scroll animasyon + overlay */}
+      <div className="relative flex-shrink-0 h-[35vh] sm:h-[45vh] lg:h-screen lg:w-1/2 lg:min-w-0 overflow-hidden bg-[#fafafa]">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="login-scroll-strip flex flex-col">
-            {[...sliderExamples, ...sliderExamples].map((ex, i) => (
-              <div key={i} className="flex-shrink-0 w-full h-[35vh] sm:h-[45vh] lg:h-screen">
-                <img src={ex.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+          <div className="login-scroll-strip flex flex-col gap-0">
+            {[1, 2].map((copy) => (
+              <div key={copy} className="flex-shrink-0 p-3 sm:p-4 lg:p-6 flex justify-center">
+                <div className="login-masonry-grid max-w-[280px] sm:max-w-[340px] lg:max-w-[420px]">
+                  {gridExamples.slice(0, 8).map((ex, i) => (
+                    <div
+                      key={`${copy}-${i}`}
+                      className={`login-masonry-item overflow-hidden rounded-2xl shadow-md bg-gray-200 ${GRID_ASPECTS[i % GRID_ASPECTS.length]}`}
+                    >
+                      <img src={ex.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/70" />
-        <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-8 lg:p-12 pointer-events-none">
-          <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-3 lg:mb-4 leading-tight drop-shadow-lg">
-            {t.loginSlogan}
-          </h2>
-          <p className="text-base sm:text-lg lg:text-xl text-white/95 max-w-xl leading-relaxed drop-shadow-md">
-            {t.loginSubtitle}
-          </p>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#fafafa] via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-5 lg:p-6 pointer-events-none">
+          <div className="bg-gradient-to-t from-[#fafafa] via-[#fafafa]/80 to-transparent -mx-4 sm:-mx-5 lg:-mx-6 -mb-4 sm:-mb-5 lg:-mb-6 px-4 sm:px-5 lg:px-6 pt-12 pb-4 sm:pb-5 lg:pb-6">
+            <h2 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 leading-tight">
+              {t.loginSlogan}
+            </h2>
+            <p className="text-sm text-gray-600 max-w-md leading-relaxed">
+              {t.loginSubtitle}
+            </p>
+          </div>
         </div>
       </div>
 
