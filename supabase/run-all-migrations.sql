@@ -453,6 +453,10 @@ UPDATE artists SET sort_order = 0 WHERE slug = 'vangogh';
 UPDATE artists SET sort_order = 1 WHERE slug = 'monet';
 UPDATE artists SET sort_order = sort_order - 1 WHERE slug NOT IN ('vangogh', 'monet') AND sort_order > 2;
 
+-- ========== 031_profiles_country_code ==========
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS country_code TEXT;
+CREATE INDEX IF NOT EXISTS idx_profiles_country_code ON profiles(country_code);
+
 -- ========== Admin ataması (ilk Google girişinden SONRA çalıştır) ==========
 -- Bu satırı ilk kez gokturk4business@gmail.com ile giriş yaptıktan sonra
 -- Supabase SQL Editor'da ayrı bir sorgu olarak çalıştır:

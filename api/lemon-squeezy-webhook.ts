@@ -16,6 +16,25 @@ function jsonResponse(obj: object, status: number) {
   });
 }
 
+async function fetchCustomerCountry(customerId: string | number): Promise<string | null> {
+  const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(`https://api.lemonsqueezy.com/v1/customers/${customerId}`, {
+      headers: {
+        Accept: 'application/vnd.api+json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const country = json?.data?.attributes?.country;
+    return typeof country === 'string' && country ? country : null;
+  } catch {
+    return null;
+  }
+}
+
 async function sendGa4Purchase(params: {
   userId: string | null;
   transactionId: string;
@@ -188,12 +207,18 @@ export default async function handler(req: Request) {
       currencyCode = attrs.currency ?? 'USD';
       userEmail = attrs.user_email ?? null;
       countryCode = attrs.country_code ?? null;
+      if (!countryCode && attrs.customer_id) {
+        countryCode = await fetchCustomerCountry(attrs.customer_id);
+      }
     } else if (isSubPayment) {
       orderId = attrs.order_id ?? data.id;
       variantId = attrs.variant_id != null ? String(attrs.variant_id) : undefined;
       total = attrs.total != null ? String(attrs.total) : null;
       currencyCode = attrs.currency ?? 'USD';
       userEmail = attrs.user_email ?? null;
+      if (!countryCode && attrs.customer_id) {
+        countryCode = await fetchCustomerCountry(attrs.customer_id);
+      }
     }
 
     let credits = 0;

@@ -20,6 +20,15 @@ interface SaleRow {
 
 const LIMIT_OPTIONS = [50, 100, 200, 500, 1000] as const;
 
+function countryDisplayName(code: string): string {
+  if (!code || code === '?') return 'Belirtilmemiş';
+  try {
+    return new Intl.DisplayNames(['tr'], { type: 'region' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 /** Lemon Squeezy / Paddle amounts are in smallest currency unit (cents for USD). Convert to display value. */
 function parseAmount(amount: string | null, currency: string): number {
   if (!amount) return 0;
@@ -217,7 +226,7 @@ export default function AdminSales() {
             >
               <option value="">Tüm ülkeler</option>
               {filterOptions.countries.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{countryDisplayName(c)}</option>
               ))}
             </select>
           </div>
@@ -362,7 +371,7 @@ export default function AdminSales() {
                     .sort((a, b) => b[1].revenue - a[1].revenue)
                     .map(([code, { count, revenue }]) => (
                       <tr key={code} className="border-b border-gray-800/50">
-                        <td className="py-2 text-white">{code === '?' ? 'Belirtilmemiş' : code}</td>
+                        <td className="py-2 text-white">{countryDisplayName(code)}</td>
                         <td className="py-2 text-right text-gray-300">{count}</td>
                         <td className="py-2 text-right text-emerald-400">{formatAmount(revenue, currency)}</td>
                       </tr>
@@ -410,7 +419,7 @@ export default function AdminSales() {
                     <td className="px-4 py-3 text-sm text-gray-300 truncate max-w-[160px]">
                       {s.profiles?.email ?? s.customer_email ?? '-'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-400">{s.country_code || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-400" title={s.country_code || ''}>{s.country_code ? countryDisplayName(s.country_code) : '-'}</td>
                     <td className="px-4 py-3 text-sm text-emerald-400 text-right font-medium">
                       {s.amount ? formatAmount(parseAmount(s.amount, s.currency_code), s.currency_code) : '-'}
                     </td>

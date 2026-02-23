@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { supabase, getApiUrl } from '../lib/supabase';
 import { Search, User, Ban, CheckCircle, Loader2, Filter, Plus, X, Zap, Gift } from 'lucide-react';
 
@@ -17,6 +17,7 @@ interface ProfileRow {
   created_at: string;
   last_purchased_pack_id?: string | null;
   pricing_packs?: { name: string } | null;
+  country_code?: string | null;
 }
 
 type RoleFilter = 'all' | 'user' | 'admin';
@@ -50,6 +51,15 @@ const LANGUAGE_OPTIONS: { value: LanguageFilter; label: string }[] = [
   { value: 'es', label: 'ES' },
   { value: 'de', label: 'DE' },
 ];
+
+function countryDisplayName(code: string): string {
+  if (!code || code === '?') return 'Belirtilmemiş';
+  try {
+    return new Intl.DisplayNames(['tr'], { type: 'region' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
 
 const DATE_OPTIONS: { value: DateRangeKey; label: string }[] = [
   { value: 'all', label: 'Tümü' },
@@ -185,6 +195,7 @@ export default function AdminUsers() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [packFilter, setPackFilter] = useState<PackFilter>('all');
   const [languageFilter, setLanguageFilter] = useState<LanguageFilter>('all');
+  const [countryFilter, setCountryFilter] = useState<string>('');
   const [dateRange, setDateRange] = useState<DateRangeKey>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
@@ -201,7 +212,7 @@ export default function AdminUsers() {
     }
     supabase
       .from('profiles')
-      .select('id, email, full_name, avatar_url, credits, role, tier, language, is_banned, created_at, last_purchased_pack_id, pricing_packs(name)')
+      .select('id, email, full_name, avatar_url, credits, role, tier, language, is_banned, created_at, last_purchased_pack_id, pricing_packs(name), country_code')
       .order('created_at', { ascending: false })
       .limit(500)
       .then(({ data }) => {
@@ -229,6 +240,7 @@ export default function AdminUsers() {
     if (packFilter === 'has_pack' && !p.last_purchased_pack_id) return false;
     if (packFilter === 'no_pack' && p.last_purchased_pack_id) return false;
     if (languageFilter !== 'all' && (p.language || 'tr') !== languageFilter) return false;
+    if (countryFilter && (p.country_code || '').toLowerCase() !== countryFilter.toLowerCase()) return false;
     if (!isInDateRange(p.created_at, dateRange)) return false;
     if (dateFrom && p.created_at < dateFrom) return false;
     if (dateTo && p.created_at > (dateTo + 'T23:59:59.999Z')) return false;
@@ -383,7 +395,16 @@ export default function AdminUsers() {
     setSavingId(null);
   };
 
-  const hasActiveFilters = roleFilter !== 'all' || statusFilter !== 'all' || packFilter !== 'all' || languageFilter !== 'all' || dateRange !== 'all' || !!dateFrom || !!dateTo;
+  const hasActiveFilters = roleFilter !== 'all' || statusFilter !== 'all' || packFilter !== 'all' || languageFilter !== 'all' || !!countryFilter || dateRange !== 'all' || !!dateFrom || !!dateTo;
+
+  const countryOptions = useMemo(() => {
+    const codes = new Set<string>();
+    list.forEach((p) => {
+      const c = p.country_code?.trim();
+      if (c) codes.add(c);
+    });
+    return Array.from(codes).sort((a, b) => countryDisplayName(a).localeCompare(countryDisplayName(b)));
+  }, [list]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -440,6 +461,7 @@ export default function AdminUsers() {
                   setStatusFilter('all');
                   setPackFilter('all');
                   setLanguageFilter('all');
+                  setCountryFilter('');
                   setDateRange('all');
                   setDateFrom('');
                   setDateTo('');
@@ -489,6 +511,15 @@ export default function AdminUsers() {
               <select value={languageFilter} onChange={(e) => setLanguageFilter(e.target.value as LanguageFilter)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50">
                 {LANGUAGE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Ülke</label>
+              <select value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500/50">
+                <option value="">Tümü</option>
+                {countryOptions.map((code) => (
+                  <option key={code} value={code}>{countryDisplayName(code)}</option>
                 ))}
               </select>
             </div>
@@ -548,6 +579,7 @@ export default function AdminUsers() {
                     <th className="p-3 font-medium">Rol</th>
                     <th className="p-3 font-medium">Son paket</th>
                     <th className="p-3 font-medium">Dil</th>
+                    <th className="p-3 font-medium">Ülke</th>
                     <th className="p-3 font-medium">Durum</th>
                     <th className="p-3 font-medium text-right">İşlem</th>
                   </tr>
@@ -583,6 +615,9 @@ export default function AdminUsers() {
                       </td>
                       <td className="p-3">
                         <span className="text-sm text-gray-400 uppercase">{(p.language || 'tr')}</span>
+                      </td>
+                      <td className="p-3">
+                        <span className="text-sm text-gray-400">{p.country_code ? countryDisplayName(p.country_code) : '—'}</span>
                       </td>
                       <td className="p-3">
                         {p.is_banned ? (
@@ -638,6 +673,9 @@ export default function AdminUsers() {
                             {p.role}
                           </span>
                           <span className="text-xs text-gray-500 uppercase">{(p.language || 'tr')}</span>
+                          {p.country_code && (
+                            <span className="text-xs text-gray-400">{countryDisplayName(p.country_code)}</span>
+                          )}
                           {p.is_banned ? (
                             <span className="inline-flex items-center gap-1 text-red-400 text-xs">
                               <Ban className="w-3 h-3" /> Yasaklı

@@ -16,6 +16,7 @@ export interface Profile {
   role: string;
   is_banned: boolean;
   last_purchased_pack_id?: string | null;
+  country_code?: string | null;
 }
 
 interface AuthState {
@@ -41,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return;
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, full_name, avatar_url, username, credits, role, tier, language, is_banned, last_purchased_pack_id')
+      .select('id, email, full_name, avatar_url, username, credits, role, tier, language, is_banned, last_purchased_pack_id, country_code')
       .eq('id', uid)
       .single();
     if (error) {
@@ -84,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               language: String(row.language ?? 'tr'),
               is_banned: Boolean(row.is_banned),
               last_purchased_pack_id: (row.last_purchased_pack_id as string | null) ?? null,
+              country_code: (row.country_code as string | null) ?? null,
             });
           }
         }

@@ -130,6 +130,41 @@ export default function MainApp() {
     refreshProfile();
   }, [user?.id]);
 
+  // Kayıt ülkesi: ülke bilgisi yoksa ip-api ile al ve profile kaydet (session başına 1 kez)
+  useEffect(() => {
+    if (!user?.id || !supabase || profile?.country_code) return;
+    const key = `country_check_${user.id}`;
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(key)) return;
+    (async () => {
+      try {
+        const session = await supabase?.auth.getSession();
+        const token = session?.data?.session?.access_token;
+        if (!token) return;
+        let countryCode: string | null = null;
+        try {
+          const geoRes = await fetch('https://ipapi.co/json/');
+          const geo = await geoRes.json().catch(() => ({}));
+          countryCode = geo?.country_code ?? null;
+        } catch {
+          // ipapi.co başarısız olursa sessizce atla
+        }
+        if (!countryCode || countryCode.length !== 2) return;
+        const res = await fetch(getApiUrl('/api/update-signup-country'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ country_code: countryCode }),
+        });
+        if (res.ok) {
+          sessionStorage.setItem(key, '1');
+          const data = await res.json().catch(() => ({}));
+          if (data?.updated) refreshProfile();
+        }
+      } catch {
+        // Sessizce devam et
+      }
+    })();
+  }, [user?.id, profile?.country_code, supabase, refreshProfile]);
+
   // Cihaz parmak izi kontrolü: aynı cihazda çoklu hesap açmayı sınırla (session başına 1 kez)
   useEffect(() => {
     if (!user?.id || !supabase) return;
