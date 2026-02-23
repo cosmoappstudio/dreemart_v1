@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, getApiUrl } from '../lib/supabase';
 import { Key, CheckCircle, XCircle, Loader2, RefreshCw, Shield } from 'lucide-react';
 
 interface KeysStatus {
@@ -30,8 +30,7 @@ export default function AdminKeys() {
         setError('Oturum yok');
         return;
       }
-      const base = import.meta.env.VITE_APP_URL ? `https://${import.meta.env.VITE_APP_URL}` : window.location.origin;
-      const res = await fetch(`${base}/api/admin/keys-status`, {
+      const res = await fetch(getApiUrl('/api/admin/keys-status'), {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (!res.ok) {

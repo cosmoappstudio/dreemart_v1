@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
-import { supabase } from './lib/supabase';
+import { supabase, getApiUrl } from './lib/supabase';
 import { ARTISTS as FALLBACK_ARTISTS } from './constants';
 import { Artist, LoadingState, DreamRecord, Language } from './types';
 import { TRANSLATIONS } from './translations';
@@ -141,9 +141,7 @@ export default function MainApp() {
         const session = await supabase.auth.getSession();
         const token = session.data.session?.access_token;
         if (!token) return;
-        const base = (import.meta.env.VITE_APP_URL && !import.meta.env.VITE_APP_URL.startsWith('http'))
-          ? `https://${import.meta.env.VITE_APP_URL}` : (import.meta.env.VITE_APP_URL || window.location.origin);
-        const res = await fetch(`${base}/api/check-signup-fingerprint`, {
+        const res = await fetch(getApiUrl('/api/check-signup-fingerprint'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ fingerprint: fp }),
@@ -196,11 +194,10 @@ export default function MainApp() {
       const session = await supabase?.auth.getSession();
       const token = session?.data?.session?.access_token;
       if (!token) throw new Error('Not signed in');
-      const base = (import.meta.env.VITE_APP_URL && !import.meta.env.VITE_APP_URL.startsWith('http')) ? `https://${import.meta.env.VITE_APP_URL}` : (import.meta.env.VITE_APP_URL || window.location.origin);
 
       for (let i = 0; i < selectedArtists.length; i++) {
         if (needed > 1) setGenerateProgress({ current: i + 1, total: needed });
-        const res = await fetch(`${base}/api/generate-dream`, {
+        const res = await fetch(getApiUrl('/api/generate-dream'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
@@ -295,9 +292,8 @@ export default function MainApp() {
     const variantIdNum = variantId != null ? (typeof variantId === 'string' ? variantId.trim() : String(variantId)) : '';
     // Lemon Squeezy: API ile checkout URL oluştur (UUID değiştiği için sabit link yerine)
     if (variantIdNum && user?.id) {
-      const base = (import.meta.env.VITE_APP_URL && !import.meta.env.VITE_APP_URL.startsWith('http')) ? `https://${import.meta.env.VITE_APP_URL}` : (import.meta.env.VITE_APP_URL || window.location.origin);
       try {
-        const res = await fetch(`${base}/api/lemon-squeezy-create-checkout`, {
+        const res = await fetch(getApiUrl('/api/lemon-squeezy-create-checkout'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_id: user.id, variant_id: variantIdNum }),

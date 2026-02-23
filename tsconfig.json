@@ -13,6 +13,8 @@
     "jsx": "react-jsx",
     "paths": { "@/*": ["./*"] },
     "allowImportingTsExtensions": true,
-    "noEmit": true
-  }
+    "noEmit": true,
+    "types": ["vite/client"]
+  },
+  "include": ["**/*.ts", "**/*.tsx", "vite-env.d.ts"]
 }
