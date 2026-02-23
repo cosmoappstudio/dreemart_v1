@@ -140,6 +140,29 @@ Checkout’ta `user_id` custom data ile gönderilir; webhook’ta kredi bu kulla
 
 ---
 
+## 7.1. Lemon Squeezy: Test modundan canlı moda geçiş
+
+Mağaza aktif olduğunda (store activated) canlı mod açılır; ancak **checkout hâlâ test modunda** görünüyorsa aşağıdakileri kontrol et:
+
+| Sorun | Çözüm |
+|-------|--------|
+| Test modda API key kullanıyorsun | Lemon Squeezy'de **Live mode**'a geç (sol alttaki toggle) → **Settings → API** → **Create API Key** (Live mode'da) |
+| Test modda webhook tanımlı | Live mode'da ayrı webhook gerekir → **Settings → Webhooks** → Yeni webhook ekle, signing secret kopyala |
+| Paketler test modda oluşturuldu | Test modda oluşturulan ürünler canlıda yoktur. **Copy to Live Mode** ile kopyala (variant ID'ler değişir!) |
+
+**Yapılacaklar (sırayla):**
+1. [app.lemonsqueezy.com](https://app.lemonsqueezy.com) → Sol altta **Test** / **Live** toggle → **Live** seç
+2. Ürünler yoksa: Her ürün için **Copy to Live Mode** → Yeni **variant ID**'leri not al
+3. **Settings → API** → Live mode'da **Create API Key** → kopyala
+4. **Settings → Webhooks** → Live store için webhook ekle (Callback: `https://dreemart.app/api/lemon-squeezy-webhook`), signing secret al
+5. **Vercel → Settings → Environment Variables** güncelle: `LEMON_SQUEEZY_API_KEY`, `LEMON_SQUEEZY_WEBHOOK_SECRET`, `LEMON_SQUEEZY_STORE_ID`
+6. **Admin → Kredi Paketleri** → Her paketin `lemon_squeezy_variant_id` alanını **canlı moddaki** variant ID ile güncelle
+7. Vercel'de redeploy (env değişince otomatik olmayabilir; **Redeploy** butonu ile yeniden deploy et)
+
+Detaylı checklist için: [LEMON_SQUEEZY_CANLI_MOD.md](./LEMON_SQUEEZY_CANLI_MOD.md)
+
+---
+
 ## Özet kontrol listesi
 
 - [ ] `supabase/run-all-migrations.sql` Supabase SQL Editor’da çalıştırıldı

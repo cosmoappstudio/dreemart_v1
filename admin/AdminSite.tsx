@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Loader2, Check, ImageIcon, Upload, Share2 } from 'lucide-react';
+import { Loader2, Check, ImageIcon, Upload, Share2, Gift } from 'lucide-react';
 
 const SOCIAL_KEYS = [
   { key: 'social_instagram', label: 'Instagram', placeholder: 'https://instagram.com/...' },
@@ -10,8 +10,11 @@ const SOCIAL_KEYS = [
   { key: 'social_youtube', label: 'YouTube', placeholder: 'https://youtube.com/@...' },
 ] as const;
 
+const NEW_USER_CREDITS_KEY = 'new_user_credits';
+
 export default function AdminSite() {
   const [logoUrl, setLogoUrl] = useState('');
+  const [newUserCredits, setNewUserCredits] = useState<number>(1);
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -28,12 +31,15 @@ export default function AdminSite() {
       return;
     }
     (async () => {
-      const { data } = await supabase.from('site_settings').select('key, value').in('key', ['logo_url', ...SOCIAL_KEYS.map((s) => s.key)]);
+      const { data } = await supabase.from('site_settings').select('key, value').in('key', ['logo_url', NEW_USER_CREDITS_KEY, ...SOCIAL_KEYS.map((s) => s.key)]);
       const rows = (data ?? []) as { key: string; value: string }[];
       const social: Record<string, string> = {};
       rows.forEach((r) => {
         if (r.key === 'logo_url') setLogoUrl(r.value ?? '');
-        else social[r.key] = r.value ?? '';
+        else if (r.key === NEW_USER_CREDITS_KEY) {
+          const n = parseInt(r.value ?? '1', 10);
+          setNewUserCredits(Number.isFinite(n) && n >= 0 ? n : 1);
+        } else social[r.key] = r.value ?? '';
       });
       setSocialLinks(social);
       setLoading(false);
@@ -43,8 +49,11 @@ export default function AdminSite() {
   const save = async () => {
     if (!supabase) return;
     setSaving(true);
+    const credits = Math.max(0, Math.floor(newUserCredits));
+    setNewUserCredits(credits);
     const updates = [
       { key: 'logo_url', value: logoUrl.trim() },
+      { key: NEW_USER_CREDITS_KEY, value: String(credits) },
       ...Object.entries(socialLinks).map(([key, value]) => ({ key, value: value.trim() })),
     ];
     for (const u of updates) {
@@ -108,6 +117,25 @@ export default function AdminSite() {
           Backend bağlı değil.
         </div>
       )}
+
+      {/* Yeni kullanıcı kredisi */}
+      <div className="rounded-xl border border-gray-800 bg-gray-900/50 overflow-hidden max-w-xl">
+        <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
+          <Gift className="w-5 h-5 text-indigo-400" />
+          <h2 className="font-semibold text-white">Yeni Kullanıcı Kredisi</h2>
+        </div>
+        <div className="p-4">
+          <label className="block text-xs font-medium text-gray-400 mb-2">Yeni kayıt olan kullanıcıların başlangıç kredisi</label>
+          <input
+            type="number"
+            min={0}
+            value={newUserCredits}
+            onChange={(e) => setNewUserCredits(Math.max(0, parseInt(e.target.value, 10) || 0))}
+            className="w-24 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+          />
+          <p className="text-xs text-gray-500 mt-2">0 veya daha fazla. Değişiklik sadece yeni kayıt olanlara uygulanır.</p>
+        </div>
+      </div>
 
       {/* Logo */}
       <div className="rounded-xl border border-gray-800 bg-gray-900/50 overflow-hidden max-w-xl">
