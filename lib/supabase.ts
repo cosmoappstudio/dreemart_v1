@@ -7,7 +7,14 @@ if (!url || !anonKey) {
   console.warn('Supabase env missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
 }
 
-export const supabase = url && anonKey ? createClient(url, anonKey) : null;
+export const supabase = url && anonKey
+  ? createClient(url, anonKey, {
+      auth: {
+        detectSessionInUrl: true,
+        flowType: 'pkce',
+      },
+    })
+  : null;
 
 export function getApiUrl(path: string): string {
   const base = import.meta.env.VITE_APP_URL || import.meta.env.VERCEL_URL || '';

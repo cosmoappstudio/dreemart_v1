@@ -98,18 +98,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const hasAuthHash = typeof window !== 'undefined' && /#.*access_token=/.test(window.location.hash);
+    const isOAuthCallback =
+      typeof window !== 'undefined' &&
+      (/#.*access_token=/.test(window.location.hash) || /[?&]code=/.test(window.location.search));
 
     const applySession = (session: { user: User } | null) => {
       setUser(session?.user ?? null);
-      if (session?.user?.id) fetchProfile(session.user.id).then(() => setLoading(false));
-      else setLoading(false);
-      if (hasAuthHash && typeof window !== 'undefined') {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      if (session?.user?.id) {
+        fetchProfile(session.user.id).then(() => setLoading(false));
+        if (isOAuthCallback && typeof window !== 'undefined') {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      } else {
+        if (!isOAuthCallback) setLoading(false);
       }
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => applySession(session));
+
+    const fallbackTimer = isOAuthCallback
+      ? window.setTimeout(() => setLoading((prev) => (prev ? false : prev)), 8000)
+      : undefined;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
@@ -118,10 +127,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         metaTrackCustom('login', { method: 'Google' });
       }
       setUser(session?.user ?? null);
-      if (session?.user?.id) fetchProfile(session.user.id);
-      else setProfileState(null);
+      if (session?.user?.id) {
+        fetchProfile(session.user.id).then(() => setLoading(false));
+        if (isOAuthCallback && typeof window !== 'undefined') {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      } else {
+        setProfileState(null);
+        setLoading(false);
+      }
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+    };
   }, []);
 
   const signInWithGoogle = async (redirectPath?: string) => {
