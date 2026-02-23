@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { pageView } from './lib/analytics';
 import { metaPageView } from './lib/metaPixel';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { supabase } from './lib/supabase';
+import { supabase, getApiUrl } from './lib/supabase';
 import { LANDING } from './landingTranslations';
 import type { Language } from './types';
 import { ChevronDown } from 'lucide-react';
@@ -128,14 +128,32 @@ function LoginPage() {
   const t = LANDING[lang];
 
   useEffect(() => {
-    if (!supabase) return;
-    supabase.from('landing_examples').select('image_url').order('sort_order').then(({ data }) => {
-      if (data && data.length >= 3) {
-        const merged = [...data];
-        while (merged.length < 8) merged.push(LOGIN_GRID_FALLBACK[merged.length % LOGIN_GRID_FALLBACK.length]);
-        setGridExamples(merged.slice(0, 8));
+    const loadImages = async () => {
+      // 1. Önce API'den üretilmiş rüya görsellerini al
+      try {
+        const res = await fetch(getApiUrl('/api/public-dream-images'));
+        const json = await res.json().catch(() => ({}));
+        const urls = Array.isArray(json?.images) ? json.images : [];
+        if (urls.length >= 2) {
+          const withFormat = urls.slice(0, 16).map((url: string) => ({ image_url: url }));
+          setGridExamples(withFormat);
+          return;
+        }
+      } catch {
+        // API başarısız, devam
       }
-    });
+      // 2. Fallback: landing_examples
+      if (supabase) {
+        supabase.from('landing_examples').select('image_url').order('sort_order').then(({ data }) => {
+          if (data && data.length >= 3) {
+            const merged = [...data];
+            while (merged.length < 8) merged.push(LOGIN_GRID_FALLBACK[merged.length % LOGIN_GRID_FALLBACK.length]);
+            setGridExamples(merged.slice(0, 8));
+          }
+        });
+      }
+    };
+    loadImages();
   }, []);
 
   const handleLoginClick = () => {
