@@ -8,16 +8,16 @@ export const ARTISTS: Artist[] = [
     imageUrl: 'https://picsum.photos/seed/vangogh/100/100'
   },
   {
-    id: 'dali',
-    name: 'Salvador Dalí',
-    styleDescription: 'surrealist painting, melting clocks, dreamscape, bizarre juxtaposition, hyper-realistic detail but impossible physics, desert landscape background',
-    imageUrl: 'https://picsum.photos/seed/dali/100/100'
-  },
-  {
     id: 'monet',
     name: 'Claude Monet',
     styleDescription: 'impressionist style, soft light, visible brushstrokes, garden atmosphere, water lilies, hazy, pastel colors, plein air',
     imageUrl: 'https://picsum.photos/seed/monet/100/100'
+  },
+  {
+    id: 'dali',
+    name: 'Salvador Dalí',
+    styleDescription: 'surrealist painting, melting clocks, dreamscape, bizarre juxtaposition, hyper-realistic detail but impossible physics, desert landscape background',
+    imageUrl: 'https://picsum.photos/seed/dali/100/100'
   },
   {
     id: 'picasso',

@@ -8,8 +8,9 @@ import { trackEvent, trackBeginCheckout, trackViewItemList } from './lib/analyti
 import { metaViewContent, metaInitiateCheckout, metaTrackCustom } from './lib/metaPixel';
 import { Link } from 'react-router-dom';
 import { ADMIN_PATH } from './lib/adminPath';
-import { Sparkles, Moon, Share2, X, Stars, User, Home, Crown, CheckCircle2, Zap, History, LayoutGrid, Calendar, Globe, LogOut, AlertCircle, RefreshCw, Palette, Award, ChevronDown, ChevronLeft, ChevronRight, Settings, Download } from 'lucide-react';
+import { Sparkles, Moon, Share2, X, Stars, User, Home, Crown, CheckCircle2, Zap, History, LayoutGrid, Calendar, Globe, LogOut, AlertCircle, RefreshCw, Palette, Award, ChevronDown, ChevronLeft, ChevronRight, Settings, Download, Lock } from 'lucide-react';
 import { LEGAL_LINK_LABELS } from './landingTranslations';
+import { getDeviceFingerprint } from './lib/fingerprint';
 
 const LANGUAGE_OPTIONS: { code: Language; flag: string; label: string }[] = [
   { code: 'tr', flag: '🇹🇷', label: 'Türkçe' },
@@ -83,6 +84,7 @@ export default function MainApp() {
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [creditPacksFromDb, setCreditPacksFromDb] = useState<{ id: string; name: string; price: string; credits_text: string; badge: string | null; lemon_squeezy_variant_id?: string | null; lemon_squeezy_checkout_uuid?: string | null }[]>([]);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [freeCreditsArtistCount, setFreeCreditsArtistCount] = useState<number>(2);
 
   const language = (profile?.language || 'tr') as Language;
   const currentLangOption = LANGUAGE_OPTIONS.find((o) => o.code === language) ?? LANGUAGE_OPTIONS[0];
@@ -128,16 +130,49 @@ export default function MainApp() {
     refreshProfile();
   }, [user?.id]);
 
+  // Cihaz parmak izi kontrolü: aynı cihazda çoklu hesap açmayı sınırla (session başına 1 kez)
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    const key = `fp_check_${user.id}`;
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(key)) return;
+    (async () => {
+      try {
+        const fp = await getDeviceFingerprint();
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        if (!token) return;
+        const base = (import.meta.env.VITE_APP_URL && !import.meta.env.VITE_APP_URL.startsWith('http'))
+          ? `https://${import.meta.env.VITE_APP_URL}` : (import.meta.env.VITE_APP_URL || window.location.origin);
+        const res = await fetch(`${base}/api/check-signup-fingerprint`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ fingerprint: fp }),
+        });
+        if (res.ok) {
+          sessionStorage.setItem(key, '1');
+          const data = await res.json().catch(() => ({}));
+          if (data?.creditsDeducted) refreshProfile();
+        }
+      } catch {
+        // Sessizce devam et
+      }
+    })();
+  }, [user?.id, supabase, refreshProfile]);
+
   // Profil sekmesine geçildiğinde Supabase'den en güncel veriyi çek (username vb.)
   useEffect(() => {
     if (activeTab === 'profile' && user?.id) refreshProfile();
   }, [activeTab]);
 
-  // Kredi paketleri: Admin/landing ile aynı kaynak (pricing_packs); Lemon Squeezy variant_id checkout için
+  // Kredi paketleri + ücretsiz kredilerde kullanılabilir ressam sayısı
   useEffect(() => {
     if (!supabase) return;
     supabase.from('pricing_packs').select('id, name, price, credits_text, badge, sort_order, lemon_squeezy_variant_id, lemon_squeezy_checkout_uuid').order('sort_order').then(({ data }) => {
       if (data?.length) setCreditPacksFromDb(data as { id: string; name: string; price: string; credits_text: string; badge: string | null; lemon_squeezy_variant_id?: string | null; lemon_squeezy_checkout_uuid?: string | null }[]);
+    });
+    supabase.from('site_settings').select('value').eq('key', 'free_credits_artist_count').single().then(({ data }) => {
+      const n = parseInt((data as { value?: string })?.value ?? '2', 10);
+      setFreeCreditsArtistCount(Number.isFinite(n) && n >= 1 ? n : 2);
     });
   }, []);
 
@@ -533,9 +568,18 @@ export default function MainApp() {
                 </div>
               ))
             ) : (
-              artists.map((artist) => {
+              artists.map((artist, idx) => {
                 const isSelected = selectedArtists.some(a => a.id === artist.id);
+                const hasPurchased = !!profile?.last_purchased_pack_id;
+                const isLocked = !hasPurchased && idx >= freeCreditsArtistCount;
                 const toggle = () => {
+                  if (isLocked) {
+                    trackEvent('paywall_opened', { source: 'locked_artist' });
+                    metaTrackCustom('paywall_opened', { source: 'locked_artist' });
+                    setPaywallView('credits');
+                    setShowPaywall(true);
+                    return;
+                  }
                   if (isSelected) {
                     if (selectedArtists.length <= 1) return;
                     setSelectedArtists(prev => prev.filter(a => a.id !== artist.id));
@@ -544,11 +588,18 @@ export default function MainApp() {
                   }
                 };
                 return (
-                  <button key={artist.id} onClick={toggle} className={`relative flex-shrink-0 w-24 flex flex-col items-center gap-3 snap-center transition-transform duration-300 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:ring-offset-2 focus:ring-offset-[#0B0D17] rounded-2xl ${isSelected ? 'scale-110 opacity-100' : 'opacity-60 scale-95 hover:opacity-80 hover:scale-100'}`}>
-                    <div className={`w-20 h-20 rounded-full p-1 transition-all duration-300 ${isSelected ? 'bg-gradient-to-br from-gold-300 to-amber-600 shadow-[0_0_20px_rgba(250,204,21,0.35)]' : 'border border-white/20'}`}>
+                  <button key={artist.id} onClick={toggle} className={`relative flex-shrink-0 w-24 flex flex-col items-center gap-3 snap-center transition-transform duration-300 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:ring-offset-2 focus:ring-offset-[#0B0D17] rounded-2xl ${isLocked ? 'opacity-50 cursor-pointer' : ''} ${isSelected ? 'scale-110 opacity-100' : isLocked ? '' : 'opacity-60 scale-95 hover:opacity-80 hover:scale-100'}`}>
+                    <div className={`relative w-20 h-20 rounded-full p-1 transition-all duration-300 ${isSelected ? 'bg-gradient-to-br from-gold-300 to-amber-600 shadow-[0_0_20px_rgba(250,204,21,0.35)]' : 'border border-white/20'}`}>
                       <img src={artist.imageUrl} alt={artist.name} className="w-full h-full rounded-full object-cover" loading="lazy" />
+                      {isLocked && (
+                        <div className="absolute inset-0 rounded-full bg-slate-900/70 flex items-center justify-center">
+                          <Lock className="w-6 h-6 text-amber-400" />
+                        </div>
+                      )}
                     </div>
-                    <span className={`text-xs font-bold text-center transition-colors ${isSelected ? 'text-gold-300' : 'text-gray-400'}`}>{artist.name.split(' ')[1] || artist.name}</span>
+                    <span className={`text-xs font-bold text-center transition-colors ${isSelected ? 'text-gold-300' : isLocked ? 'text-gray-500' : 'text-gray-400'}`} title={isLocked ? t('artistLockedHint') : undefined}>
+                      {artist.name.split(' ')[1] || artist.name}
+                    </span>
                   </button>
                 );
               })

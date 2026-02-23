@@ -94,13 +94,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const admin = getSupabaseAdmin();
 
-  const { data: profile } = await admin.from('profiles').select('credits, is_banned').eq('id', user.id).single();
+  const { data: profile } = await admin.from('profiles').select('credits, is_banned, last_purchased_pack_id').eq('id', user.id).single();
   if (!profile) return res.status(403).json({ error: 'Profile not found' });
   if (profile.is_banned) return res.status(403).json({ error: 'Account suspended' });
   if (profile.credits < 1) return res.status(402).json({ error: 'Insufficient credits' });
 
   const { data: artist } = await admin.from('artists').select('id, name, style_description').eq('id', artistId).eq('is_active', true).single();
   if (!artist) return res.status(400).json({ error: 'Invalid artist' });
+
+  if (!profile.last_purchased_pack_id) {
+    const { data: limitRow } = await admin.from('site_settings').select('value').eq('key', 'free_credits_artist_count').single();
+    const limit = Math.max(1, parseInt(String(limitRow?.value || '2'), 10) || 2);
+    const { data: allowedArtists } = await admin.from('artists').select('id').eq('is_active', true).order('sort_order').limit(limit);
+    const allowedIds = new Set((allowedArtists ?? []).map((a) => a.id));
+    if (!allowedIds.has(artistId)) {
+      return res.status(403).json({ error: 'Bu ressama erişmek için kredi satın almanız gerekir.' });
+    }
+  }
 
   // Load Replicate model config from DB (admin-editable). Fallback to defaults if table missing/empty.
   let imageConfig: ReplicateModelRow = { key: 'image_generation', model_identifier: DEFAULT_IMAGE_MODEL, input_preset: 'imagen' };

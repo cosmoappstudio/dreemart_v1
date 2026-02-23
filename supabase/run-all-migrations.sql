@@ -377,29 +377,81 @@ ALTER TABLE pricing_packs ADD COLUMN IF NOT EXISTS lemon_squeezy_checkout_uuid T
 -- ========== 024_new_user_credits_config ==========
 INSERT INTO site_settings (key, value) VALUES ('new_user_credits', '1') ON CONFLICT (key) DO NOTHING;
 
+-- ========== 026_new_user_credits_read_fix ==========
+CREATE OR REPLACE FUNCTION public.get_new_user_credits()
+RETURNS INTEGER
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v INTEGER;
+BEGIN
+  SELECT GREATEST(0, LEAST(999999, (BTRIM(value))::INTEGER)) INTO v
+  FROM public.site_settings WHERE key = 'new_user_credits' AND BTRIM(value) ~ '^[0-9]+$' LIMIT 1;
+  RETURN COALESCE(v, 1);
+EXCEPTION WHEN OTHERS THEN RETURN 1;
+END;
+$$;
+
+-- ========== 027_blocked_email_domains ==========
+CREATE TABLE IF NOT EXISTS public.blocked_email_domains (domain TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+ALTER TABLE blocked_email_domains ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read blocked_email_domains" ON blocked_email_domains FOR SELECT USING (TRUE);
+DROP POLICY IF EXISTS "Admins can manage blocked_email_domains" ON blocked_email_domains;
+CREATE POLICY "Admins can manage blocked_email_domains" ON blocked_email_domains FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+INSERT INTO blocked_email_domains (domain) VALUES
+  ('tempmail.com'),('temp-mail.org'),('temp-mail.io'),('tempmail.net'),('tmpmail.org'),
+  ('guerrillamail.com'),('guerrillamail.org'),('guerrillamail.net'),('guerrillamail.de'),
+  ('mailinator.com'),('mailinator.net'),('mailinator2.com'),('mailinator.org'),
+  ('10minutemail.com'),('10minutemail.net'),('10minutemail.org'),
+  ('maildrop.cc'),('getnada.com'),('yopmail.com'),('yopmail.fr'),
+  ('throwaway.email'),('trashmail.com'),('fakeinbox.com'),('dispostable.com'),
+  ('mailnesia.com'),('tempinbox.com'),('sharklasers.com'),('guerrillamail.info'),
+  ('spam4.me'),('mohmal.com'),('emailondeck.com'),('tempail.com'),
+  ('discard.email'),('discardmail.com'),('mintemail.com'),('mytrashmail.com'),
+  ('temp-mail.ru'),('mail.tm'),('emailfake.com'),('inboxkitten.com'),
+  ('getairmail.com'),('tmailor.com'),('tempr.email'),('emailhub.org'),
+  ('33mail.com'),('anonymbox.com'),('mailcatch.com'),('disposable.com'),
+  ('hide.my'),('temp-mail.live'),('mailsac.com'),('moakt.com')
+ON CONFLICT (domain) DO NOTHING;
+
+CREATE OR REPLACE FUNCTION public.is_email_domain_blocked(email_text TEXT)
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$ SELECT EXISTS (SELECT 1 FROM public.blocked_email_domains WHERE domain = LOWER(SPLIT_PART(email_text, '@', 2))) $$;
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
-DECLARE
-  initial_credits INTEGER;
+DECLARE initial_credits INTEGER; user_email TEXT;
 BEGIN
-  SELECT COALESCE(
-    (SELECT (NULLIF(TRIM(COALESCE(value, '')), ''))::INTEGER FROM site_settings WHERE key = 'new_user_credits' LIMIT 1),
-    1
-  ) INTO initial_credits;
-  IF initial_credits < 0 THEN initial_credits := 0; END IF;
-
+  user_email := NEW.raw_user_meta_data ->> 'email';
+  IF user_email IS NULL OR user_email = '' OR public.is_email_domain_blocked(user_email) THEN initial_credits := 0;
+  ELSE initial_credits := public.get_new_user_credits(); END IF;
   INSERT INTO public.profiles (id, email, full_name, avatar_url, username, credits)
-  VALUES (
-    NEW.id,
-    NEW.raw_user_meta_data ->> 'email',
-    NEW.raw_user_meta_data ->> 'full_name',
-    NEW.raw_user_meta_data ->> 'avatar_url',
-    'rüyacı_' || substr(md5(NEW.id::text || gen_random_uuid()::text), 1, 10),
-    initial_credits
-  );
+  VALUES (NEW.id, user_email, NEW.raw_user_meta_data ->> 'full_name', NEW.raw_user_meta_data ->> 'avatar_url',
+    'rüyacı_' || substr(md5(NEW.id::text || gen_random_uuid()::text), 1, 10), initial_credits);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- ========== 028_signup_fingerprints ==========
+CREATE TABLE IF NOT EXISTS public.signup_fingerprints (
+  fingerprint_hash TEXT NOT NULL,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (fingerprint_hash, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_signup_fingerprints_hash ON signup_fingerprints(fingerprint_hash);
+ALTER TABLE signup_fingerprints ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full signup_fingerprints" ON signup_fingerprints FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+CREATE POLICY "Users can read own fingerprints" ON signup_fingerprints FOR SELECT USING (auth.uid() = user_id);
+INSERT INTO site_settings (key, value) VALUES ('max_accounts_per_device', '1') ON CONFLICT (key) DO NOTHING;
+
+-- ========== 029_free_credits_artist_limit ==========
+INSERT INTO site_settings (key, value) VALUES ('free_credits_artist_count', '2') ON CONFLICT (key) DO NOTHING;
+
+-- ========== 030_artist_order_van_gogh_monet_first ==========
+UPDATE artists SET sort_order = 0 WHERE slug = 'vangogh';
+UPDATE artists SET sort_order = 1 WHERE slug = 'monet';
+UPDATE artists SET sort_order = sort_order - 1 WHERE slug NOT IN ('vangogh', 'monet') AND sort_order > 2;
 
 -- ========== Admin ataması (ilk Google girişinden SONRA çalıştır) ==========
 -- Bu satırı ilk kez gokturk4business@gmail.com ile giriş yaptıktan sonra
