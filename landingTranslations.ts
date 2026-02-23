@@ -175,6 +175,15 @@ export const LANDING: Record<Language, Record<string, string>> = {
     footerPrivacyLink: 'Gizlilik',
     footerRefundLink: 'İade Politikası',
     backToApp: 'Uygulamaya Dön',
+
+    // Login page
+    loginSlogan: 'Rüyalarını sanata dönüştür',
+    loginSubtitle: 'Rüyalarını ünlü ressamların tarzında sanata dönüştür, AI yorumunu al.',
+    loginFormSubtitle: 'Giriş yapıp rüyalarını sanata dönüştürmeye başla.',
+    loginButton: 'Google ile Giriş Yap / Kayıt Ol',
+    loginSignupNote: 'Hesabın yoksa aynı butonla kayıt olursun.',
+    loginOauthError: 'Giriş oturumu sona erdi veya geçersiz. Lütfen tekrar "Google ile Giriş Yap / Kayıt Ol" butonuna tıklayın ve aynı sekmede tamamlayın.',
+    loginBackendError: 'Backend henüz bağlı değil. .env dosyasına VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY eklediğinde Google girişi çalışacak.',
   },
   en: {
     heroTitle: 'Turn Your Dreams Into Stunning Works of Art',
@@ -338,6 +347,15 @@ export const LANDING: Record<Language, Record<string, string>> = {
     footerPrivacyLink: 'Privacy',
     footerRefundLink: 'Refund Policy',
     backToApp: 'Back to App',
+
+    // Login page
+    loginSlogan: 'Turn your dreams into art',
+    loginSubtitle: 'Transform your dreams into art in famous artists\' styles, get AI interpretation.',
+    loginFormSubtitle: 'Log in and start turning your dreams into art.',
+    loginButton: 'Log In / Sign Up with Google',
+    loginSignupNote: 'No account? Use the same button to sign up.',
+    loginOauthError: 'Login session expired or invalid. Please click "Log In / Sign Up with Google" again and complete in the same tab.',
+    loginBackendError: 'Backend not connected. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env for Google login.',
   },
   es: {
     heroTitle: 'Convierte tus Sueños en Obras de Arte',
@@ -501,6 +519,15 @@ export const LANDING: Record<Language, Record<string, string>> = {
     footerPrivacyLink: 'Privacidad',
     footerRefundLink: 'Política de Reembolso',
     backToApp: 'Volver a la App',
+
+    // Login page
+    loginSlogan: 'Convierte tus sueños en arte',
+    loginSubtitle: 'Transforma tus sueños en arte con estilos de artistas famosos, obtén interpretación IA.',
+    loginFormSubtitle: 'Inicia sesión y empieza a convertir tus sueños en arte.',
+    loginButton: 'Iniciar sesión / Registrarse con Google',
+    loginSignupNote: '¿Sin cuenta? Usa el mismo botón para registrarte.',
+    loginOauthError: 'La sesión expiró o es inválida. Haz clic de nuevo en "Iniciar sesión / Registrarse con Google" y completa en la misma pestaña.',
+    loginBackendError: 'Backend no conectado. Añade VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY al .env para Google.',
   },
   de: {
     heroTitle: 'Verwandle deine Träume in beeindruckende Kunstwerke',
@@ -664,6 +691,15 @@ export const LANDING: Record<Language, Record<string, string>> = {
     footerPrivacyLink: 'Datenschutz',
     footerRefundLink: 'Rückerstattung',
     backToApp: 'Zurück zur App',
+
+    // Login page
+    loginSlogan: 'Verwandle deine Träume in Kunst',
+    loginSubtitle: 'Transformiere deine Träume in Kunst im Stil berühmter Künstler, mit KI-Deutung.',
+    loginFormSubtitle: 'Melde dich an und verwandle deine Träume in Kunst.',
+    loginButton: 'Mit Google anmelden / Registrieren',
+    loginSignupNote: 'Kein Konto? Nutze denselben Button zur Registrierung.',
+    loginOauthError: 'Anmeldung abgelaufen oder ungültig. Klicke erneut auf "Mit Google anmelden" und schließe im gleichen Tab ab.',
+    loginBackendError: 'Backend nicht verbunden. VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY in .env eintragen für Google-Login.',
   },
 };
 
