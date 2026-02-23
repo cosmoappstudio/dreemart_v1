@@ -34,19 +34,13 @@
   animation: slide-up 0.4s ease-out;
 }
 
-/* Login masonry grid - Pinterest tarzı dinamik yerleşim */
-.login-masonry-grid {
-  column-count: 2;
-  column-gap: 0.75rem;
+/* Login sol panel - dikey scroll animasyonu */
+@keyframes login-scroll-up {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
 }
-@media (min-width: 640px) {
-  .login-masonry-grid {
-    column-count: 3;
-  }
-}
-.login-masonry-item {
-  break-inside: avoid;
-  margin-bottom: 0.75rem;
+.login-scroll-strip {
+  animation: login-scroll-up 45s linear infinite;
 }
 
 /* Custom scrollbar hiding utility */
