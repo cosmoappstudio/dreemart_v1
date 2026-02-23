@@ -14,7 +14,6 @@ export const supabase = url && anonKey
   : null;
 
 export function getApiUrl(path: string): string {
-  const base = import.meta.env.VITE_APP_URL || import.meta.env.VERCEL_URL || '';
-  const prefix = base ? `https://${base}` : '';
-  return prefix ? `${prefix}${path}` : path.startsWith('/') ? `${window.location.origin}${path}` : path;
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return p;
 }

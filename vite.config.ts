@@ -34,10 +34,17 @@ const redirectSourceUrls = (): import('vite').Plugin => ({
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const appUrl = (env.VITE_APP_URL || env.VERCEL_URL || '').trim();
+    const apiTarget = appUrl
+      ? (appUrl.startsWith('http') ? appUrl : `https://${appUrl}`).replace(/\/$/, '')
+      : 'https://dreemart.app';
     return {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: {
+          '/api': { target: apiTarget, changeOrigin: true, secure: true },
+        },
       },
       plugins: [redirectSourceUrls(), react(), tailwindcss()],
       define: {
