@@ -115,7 +115,7 @@ export default function LandingPage() {
       <header className="relative z-20 flex items-center justify-between gap-2 px-4 sm:px-6 py-4 sm:py-5 max-w-6xl mx-auto pt-safe mt-2 sm:mt-4">
         <Link to="/" className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           {logoUrl ? (
-            <img src={logoUrl} alt="Dreemart" className="h-9 w-auto sm:h-10 object-contain flex-shrink-0" />
+            <img src={logoUrl} alt="Dreemart" className="h-12 w-auto sm:h-14 md:h-16 object-contain flex-shrink-0" />
           ) : (
             <>
               <div className="p-1.5 sm:p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg sm:rounded-xl flex-shrink-0">
@@ -518,7 +518,7 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8 sm:gap-10 mb-8 sm:mb-10">
             <div className="flex items-center gap-2">
               {logoUrl ? (
-                <img src={logoUrl} alt="Dreemart" className="h-7 w-auto sm:h-8 object-contain flex-shrink-0" />
+                <img src={logoUrl} alt="Dreemart" className="h-10 w-auto sm:h-12 object-contain flex-shrink-0" />
               ) : (
                 <>
                   <Moon className="w-7 h-7 sm:w-8 sm:h-8 text-white fill-current flex-shrink-0" />

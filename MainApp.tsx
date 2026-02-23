@@ -85,6 +85,7 @@ export default function MainApp() {
   const [creditPacksFromDb, setCreditPacksFromDb] = useState<{ id: string; name: string; price: string; credits_text: string; badge: string | null; lemon_squeezy_variant_id?: string | null; lemon_squeezy_checkout_uuid?: string | null }[]>([]);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [freeCreditsArtistCount, setFreeCreditsArtistCount] = useState<number>(2);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   const language = (profile?.language || 'tr') as Language;
   const currentLangOption = LANGUAGE_OPTIONS.find((o) => o.code === language) ?? LANGUAGE_OPTIONS[0];
@@ -106,6 +107,14 @@ export default function MainApp() {
       setArtists(src);
       setSelectedArtists(src.length > 0 ? [src[0]] : []);
       setArtistsLoading(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from('site_settings').select('key, value').eq('key', 'logo_url').maybeSingle().then(({ data }) => {
+      const row = data as { value?: string } | null;
+      if (row?.value?.trim()) setLogoUrl(row.value.trim());
     });
   }, []);
 
@@ -570,11 +579,15 @@ export default function MainApp() {
   const homeContent = (
     <>
       <header className="pt-8 pb-6 px-6 flex items-center justify-between md:hidden">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg"><Moon className="w-6 h-6 text-white fill-current" /></div>
-          <div>
-            <h1 className="text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200">{t('appName')}</h1>
-          </div>
+        <div className="flex items-center gap-2 min-w-0">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Dreemart" className="h-11 w-auto object-contain flex-shrink-0" />
+          ) : (
+            <>
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg"><Moon className="w-6 h-6 text-white fill-current" /></div>
+              <h1 className="text-3xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200">{t('appName')}</h1>
+            </>
+          )}
         </div>
         <button onClick={() => { trackEvent('paywall_opened', { source: 'header' });
         metaTrackCustom('paywall_opened', { source: 'header' }); setPaywallView('credits'); setShowPaywall(true); }} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full border border-white/5 min-h-[44px] touch-manipulation">
@@ -944,12 +957,21 @@ export default function MainApp() {
 
   const Sidebar = () => (
     <div className="hidden md:flex flex-col w-64 flex-shrink-0 border-r border-white/10 bg-[#0B0D17]/50 p-4 gap-2 h-screen sticky top-0">
-      <Link to="/" className="flex items-center gap-2 px-4 py-4 mb-4 rounded-xl hover:bg-white/5 transition-colors">
-        <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg"><Moon className="w-6 h-6 text-white fill-current" /></div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200 truncate">Dreemart</h1>
-          <span className="text-[10px] text-gray-500">Ana sayfaya dön</span>
-        </div>
+      <Link to="/" className="flex items-center gap-2 px-4 py-4 mb-4 rounded-xl hover:bg-white/5 transition-colors min-w-0">
+        {logoUrl ? (
+          <div className="flex flex-col gap-0.5">
+            <img src={logoUrl} alt="Dreemart" className="h-12 w-auto object-contain flex-shrink-0" />
+            <span className="text-[10px] text-gray-500">Ana sayfaya dön</span>
+          </div>
+        ) : (
+          <>
+            <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg"><Moon className="w-6 h-6 text-white fill-current" /></div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-100 via-white to-purple-200 truncate">Dreemart</h1>
+              <span className="text-[10px] text-gray-500">Ana sayfaya dön</span>
+            </div>
+          </>
+        )}
       </Link>
       {profile?.role === 'admin' && (
         <Link to={`/${ADMIN_PATH}`} className="flex items-center gap-3 px-4 py-3 rounded-xl text-left text-gray-400 hover:bg-white/5 hover:text-white transition-colors">
