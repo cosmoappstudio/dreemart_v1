@@ -1,4 +1,4 @@
-/** Google Analytics 4 – gtag.js utility. Configure with VITE_GA_MEASUREMENT_ID in .env */
+/** Google Analytics 4 + Google Ads – gtag.js utility. Configure with VITE_GA_MEASUREMENT_ID in .env */
 
 declare global {
   interface Window {
@@ -8,13 +8,17 @@ declare global {
 }
 
 const MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID as string | undefined;
+const GOOGLE_ADS_ID = import.meta.env.VITE_GOOGLE_ADS_ID || 'AW-17971753030';
 
 let initialized = false;
 
 export function initAnalytics(): void {
-  if (!MEASUREMENT_ID || typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return;
   if (initialized) return;
   initialized = true;
+
+  const primaryId = MEASUREMENT_ID || GOOGLE_ADS_ID;
+  if (!primaryId) return;
 
   window.dataLayer = window.dataLayer || [];
   function gtag() {
@@ -24,14 +28,16 @@ export function initAnalytics(): void {
 
   const script = document.createElement('script');
   script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${primaryId}`;
   document.head.appendChild(script);
 
   gtag('js', new Date());
-  gtag('config', MEASUREMENT_ID, {
-    send_page_view: false,
-    anonymize_ip: true,
-  });
+  if (MEASUREMENT_ID) {
+    gtag('config', MEASUREMENT_ID, { send_page_view: false, anonymize_ip: true });
+  }
+  if (GOOGLE_ADS_ID && GOOGLE_ADS_ID !== MEASUREMENT_ID) {
+    gtag('config', GOOGLE_ADS_ID);
+  }
 }
 
 export function pageView(path: string, title?: string): void {
