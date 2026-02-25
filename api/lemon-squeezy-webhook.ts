@@ -247,11 +247,13 @@ export default async function handler(req: Request) {
           credits: number;
           updated_at: string;
           last_purchased_pack_id?: string | null;
+          last_order_id?: string | null;
         } = {
           credits: newCredits,
           updated_at: new Date().toISOString(),
         };
         if (packId) updatePayload.last_purchased_pack_id = packId;
+        if (orderId) updatePayload.last_order_id = String(orderId);
         await admin.from('profiles').update(updatePayload).eq('id', userId);
         await admin.from('credit_transactions').insert({
           user_id: userId,

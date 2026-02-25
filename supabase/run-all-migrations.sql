@@ -457,6 +457,9 @@ UPDATE artists SET sort_order = sort_order - 1 WHERE slug NOT IN ('vangogh', 'mo
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS country_code TEXT;
 CREATE INDEX IF NOT EXISTS idx_profiles_country_code ON profiles(country_code);
 
+-- ========== 032_profiles_last_order_id ==========
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS last_order_id TEXT;
+
 -- ========== Admin ataması (ilk Google girişinden SONRA çalıştır) ==========
 -- Bu satırı ilk kez gokturk4business@gmail.com ile giriş yaptıktan sonra
 -- Supabase SQL Editor'da ayrı bir sorgu olarak çalıştır:

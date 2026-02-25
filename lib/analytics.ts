@@ -123,9 +123,8 @@ export function setPendingPurchase(params: { packId: string; value: number; item
   }
 }
 
-/** Profile last_purchased_pack_id güncellendiğinde çağrılır; eşleşen pending varsa purchase event gönderir */
-export function maybeTrackPurchaseFromPending(packId: string): void {
-  if (!window.gtag) return;
+/** Profile last_purchased_pack_id güncellendiğinde çağrılır; eşleşen pending varsa purchase event gönderir. orderId LS order ID (CAPI/Pixel dedup için) */
+export function maybeTrackPurchaseFromPending(packId: string, orderId?: string): void {
   try {
     const raw = sessionStorage.getItem(PENDING_PURCHASE_KEY);
     if (!raw) return;
@@ -134,11 +133,12 @@ export function maybeTrackPurchaseFromPending(packId: string): void {
     if (Date.now() - data.ts > PENDING_MAX_AGE_MS) return;
     sessionStorage.removeItem(PENDING_PURCHASE_KEY);
     const item = { item_id: packId, item_name: data.itemName, price: data.value, country: data.country };
-    trackPurchase({
-      value: data.value,
-      currency: 'USD',
-      transaction_id: `ls-${packId}-${data.ts}`,
-      items: [item],
+    const txId = orderId ?? `ls-${packId}-${data.ts}`;
+    if (window.gtag) {
+      trackPurchase({ value: data.value, currency: 'USD', transaction_id: txId, items: [item] });
+    }
+    import('./metaPixel').then(({ metaPurchase }) => {
+      metaPurchase({ content_ids: [packId], content_type: 'product', value: data.value, currency: 'USD', order_id: txId, num_items: 1 });
     });
   } catch {
     sessionStorage.removeItem(PENDING_PURCHASE_KEY);

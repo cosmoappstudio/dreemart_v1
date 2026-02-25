@@ -16,6 +16,7 @@ export interface Profile {
   role: string;
   is_banned: boolean;
   last_purchased_pack_id?: string | null;
+  last_order_id?: string | null;
   country_code?: string | null;
 }
 
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return;
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, full_name, avatar_url, username, credits, role, tier, language, is_banned, last_purchased_pack_id, country_code')
+      .select('id, email, full_name, avatar_url, username, credits, role, tier, language, is_banned, last_purchased_pack_id, last_order_id, country_code')
       .eq('id', uid)
       .single();
     if (error) {
@@ -50,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     let profileData = data as Profile | null;
-    if (profileData?.last_purchased_pack_id) maybeTrackPurchaseFromPending(profileData.last_purchased_pack_id);
+    if (profileData?.last_purchased_pack_id) maybeTrackPurchaseFromPending(profileData.last_purchased_pack_id, profileData.last_order_id ?? undefined);
     if (profileData && (profileData.username == null || profileData.username.trim() === '')) {
       const username = 'rüyacı_' + Math.random().toString(36).slice(2, 12);
       const { error: updateErr } = await supabase.from('profiles').update({ username, updated_at: new Date().toISOString() }).eq('id', uid);
@@ -75,7 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const row = payload.new as Record<string, unknown>;
           if (row && typeof row === 'object') {
             const newPackId = (row.last_purchased_pack_id as string | null) ?? null;
-            if (newPackId) maybeTrackPurchaseFromPending(newPackId);
+            const newOrderId = (row.last_order_id as string | null) ?? null;
+            if (newPackId) maybeTrackPurchaseFromPending(newPackId, newOrderId ?? undefined);
             setProfileState({
               id: String(row.id ?? ''),
               email: row.email as string | null,
@@ -88,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               language: String(row.language ?? 'tr'),
               is_banned: Boolean(row.is_banned),
               last_purchased_pack_id: newPackId,
+              last_order_id: newOrderId,
               country_code: (row.country_code as string | null) ?? null,
             });
           }
