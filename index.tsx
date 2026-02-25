@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { initAnalytics } from './lib/analytics';
-import { initMetaPixel } from './lib/metaPixel';
+import { initMetaTracking } from './lib/metaPixel';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 if (supabaseUrl && typeof document !== 'undefined') {
@@ -14,8 +14,30 @@ if (supabaseUrl && typeof document !== 'undefined') {
   document.head.appendChild(link);
 }
 
+const gtmId = import.meta.env.VITE_GTM_ID as string | undefined;
+if (gtmId && typeof document !== 'undefined') {
+  window.dataLayer = window.dataLayer || [];
+  (function (w: Window & { dataLayer: unknown[] }, d: Document, s: string, l: string, i: string) {
+    w[l] = w[l] || [];
+    (w[l] as unknown[]).push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+    const f = d.getElementsByTagName(s)[0];
+    const j = d.createElement(s) as HTMLScriptElement;
+    j.async = true;
+    j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i;
+    if (f?.parentNode) f.parentNode.insertBefore(j, f);
+  })(window, document, 'script', 'dataLayer', gtmId);
+  const noscript = document.createElement('noscript');
+  const iframe = document.createElement('iframe');
+  iframe.src = 'https://www.googletagmanager.com/ns.html?id=' + gtmId;
+  iframe.height = '0';
+  iframe.width = '0';
+  iframe.style.cssText = 'display:none;visibility:hidden';
+  noscript.appendChild(iframe);
+  document.body.insertBefore(noscript, document.body.firstChild);
+}
+
 initAnalytics();
-initMetaPixel();
+initMetaTracking();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

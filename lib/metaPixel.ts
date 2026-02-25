@@ -1,14 +1,21 @@
-/** Meta Pixel (fbq) – client-side. Configure with VITE_META_PIXEL_ID in .env */
+/** Meta Pixel: GTM dataLayer modu (önerilen) veya doğrudan fbq.
+ * GTM: VITE_GTM_ID ayarla → event'ler dataLayer'a gider, GTM içinde Meta Pixel tag'i yapılandır.
+ * Direct: Sadece VITE_META_PIXEL_ID → fbq ile doğrudan gönderim (yedek).
+ */
 
 declare global {
   interface Window {
     fbq?: (action: string, ...args: unknown[]) => void;
+    dataLayer?: unknown[];
   }
 }
 
 const PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID as string | undefined;
+const GTM_ID = import.meta.env.VITE_GTM_ID as string | undefined;
 
-let initialized = false;
+const USE_GTM = !!GTM_ID;
+
+let fbqInitialized = false;
 
 function createFbq() {
   const queue: unknown[] = [];
@@ -23,68 +30,100 @@ function createFbq() {
   return n as ((...args: unknown[]) => void) & { queue: unknown[] };
 }
 
-export function initMetaPixel(): void {
-  if (!PIXEL_ID || typeof window === 'undefined') return;
-  if (initialized) return;
-  initialized = true;
+function pushToDataLayer(payload: { event: string; metaEvent: string; metaParams?: Record<string, unknown> }) {
+  if (typeof window === 'undefined' || !window.dataLayer) return;
+  window.dataLayer.push(payload);
+}
 
+export function initMetaTracking(): void {
+  if (typeof window === 'undefined') return;
+  if (USE_GTM) {
+    window.dataLayer = window.dataLayer || [];
+    return;
+  }
+  if (!PIXEL_ID || fbqInitialized) return;
+  fbqInitialized = true;
   const fbq = createFbq();
   (window as { fbq: typeof fbq }).fbq = fbq;
-
   const script = document.createElement('script');
   script.async = true;
   script.src = 'https://connect.facebook.net/en_US/fbevents.js';
   document.head.appendChild(script);
-
   fbq('init', PIXEL_ID);
-  // PageView sent by metaPageView() on route change
 }
 
 export function metaPageView(): void {
+  if (USE_GTM) {
+    pushToDataLayer({ event: 'metaPixel', metaEvent: 'PageView', metaParams: {} });
+    return;
+  }
   if (!PIXEL_ID || !window.fbq) return;
   window.fbq('track', 'PageView');
 }
 
 export function metaViewContent(params: { content_ids?: string[]; content_type?: string; value?: number; currency?: string }): void {
-  if (!PIXEL_ID || !window.fbq) return;
-  window.fbq('track', 'ViewContent', {
+  const p = {
     content_ids: params.content_ids ?? [],
     content_type: params.content_type ?? 'product',
     value: params.value ?? 0,
     currency: params.currency ?? 'USD',
-  });
+  };
+  if (USE_GTM) {
+    pushToDataLayer({ event: 'metaPixel', metaEvent: 'ViewContent', metaParams: p });
+    return;
+  }
+  if (!PIXEL_ID || !window.fbq) return;
+  window.fbq('track', 'ViewContent', p);
 }
 
 export function metaInitiateCheckout(params: { content_ids?: string[]; content_type?: string; value?: number; currency?: string; num_items?: number }): void {
-  if (!PIXEL_ID || !window.fbq) return;
-  window.fbq('track', 'InitiateCheckout', {
+  const p = {
     content_ids: params.content_ids ?? [],
     content_type: params.content_type ?? 'product',
     value: params.value ?? 0,
     currency: params.currency ?? 'USD',
     num_items: params.num_items ?? 1,
-  });
+  };
+  if (USE_GTM) {
+    pushToDataLayer({ event: 'metaPixel', metaEvent: 'InitiateCheckout', metaParams: p });
+    return;
+  }
+  if (!PIXEL_ID || !window.fbq) return;
+  window.fbq('track', 'InitiateCheckout', p);
 }
 
 export function metaPurchase(params: { content_ids?: string[]; content_type?: string; value?: number; currency?: string; order_id?: string; num_items?: number }): void {
-  if (!PIXEL_ID || !window.fbq) return;
-  window.fbq('track', 'Purchase', {
+  const p = {
     content_ids: params.content_ids ?? [],
     content_type: params.content_type ?? 'product',
     value: params.value ?? 0,
     currency: params.currency ?? 'USD',
     order_id: params.order_id,
     num_items: params.num_items ?? 1,
-  });
+  };
+  if (USE_GTM) {
+    pushToDataLayer({ event: 'metaPixel', metaEvent: 'Purchase', metaParams: p });
+    return;
+  }
+  if (!PIXEL_ID || !window.fbq) return;
+  window.fbq('track', 'Purchase', p);
 }
 
 export function metaLead(): void {
+  if (USE_GTM) {
+    pushToDataLayer({ event: 'metaPixel', metaEvent: 'Lead', metaParams: {} });
+    return;
+  }
   if (!PIXEL_ID || !window.fbq) return;
   window.fbq('track', 'Lead');
 }
 
-/** Custom events – GA ile aynı event'leri Meta'ya da gönderir */
 export function metaTrackCustom(eventName: string, params?: Record<string, string | number | boolean>): void {
+  const p = (params ?? {}) as Record<string, unknown>;
+  if (USE_GTM) {
+    pushToDataLayer({ event: 'metaPixel', metaEvent: eventName, metaParams: p });
+    return;
+  }
   if (!PIXEL_ID || !window.fbq) return;
   window.fbq('trackCustom', eventName, params);
 }
