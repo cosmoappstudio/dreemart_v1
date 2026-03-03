@@ -69,6 +69,33 @@ export function initMetaTracking(): void {
   fbq('init', PIXEL_ID);
 }
 
+/** Advanced Matching: Purchase event'te email + external_id → Event Match Quality artışı (~%100 em, ~%75 fbc).
+ * Login sonrası çağrılmalı. GTM: metaUserData event'i tetiklenir; GTM'de bu event için fbq('init', id, userData) tag'i eklenmeli. */
+export function setMetaUserData(email: string | null | undefined, externalId: string | null | undefined): void {
+  if (typeof window === 'undefined') return;
+  const em = email?.trim().toLowerCase();
+  const ext = externalId?.trim();
+  if (USE_GTM) {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ event: 'metaUserData', metaUserData: em || ext ? { ...(em && { em }), ...(ext && { external_id: ext }) } : {} });
+    return;
+  }
+  if (!PIXEL_ID || !window.fbq) return;
+  if (!em && !ext) {
+    (window.fbq as (a: string, b: string) => void)('init', PIXEL_ID);
+    return;
+  }
+  const userData: Record<string, string> = {};
+  if (em) userData.em = em;
+  if (ext) userData.external_id = ext;
+  (window.fbq as (a: string, b: string, c?: Record<string, string>) => void)('init', PIXEL_ID, userData);
+}
+
+/** Logout'ta user data temizle (sonraki ziyaretçi önceki kullanıcıyla eşleşmesin) */
+export function clearMetaUserData(): void {
+  setMetaUserData(null, null);
+}
+
 export function metaPageView(): void {
   if (USE_GTM) {
     pushToDataLayer({ event: 'metaPixel', metaEvent: 'PageView', metaParams: {} });

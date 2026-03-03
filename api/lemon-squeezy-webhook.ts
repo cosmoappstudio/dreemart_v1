@@ -79,8 +79,17 @@ async function sendGa4Purchase(params: {
   }
 }
 
+async function hashSha256(value: string): Promise<string> {
+  const enc = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', enc.encode(value));
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 async function sendMetaCapiPurchase(params: {
   userId: string | null;
+  userEmail: string | null;
   transactionId: string;
   value: number;
   currency: string;
@@ -93,11 +102,10 @@ async function sendMetaCapiPurchase(params: {
   const valueNum = typeof params.value === 'number' ? params.value : parseFloat(String(params.value)) || 0;
   const currency = params.currency || 'USD';
   const userData: Record<string, string> = {};
-  if (params.userId) {
-    const enc = new TextEncoder();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', enc.encode(params.userId));
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    userData.external_id = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  if (params.userId) userData.external_id = await hashSha256(params.userId);
+  if (params.userEmail) {
+    const normalized = params.userEmail.trim().toLowerCase();
+    if (normalized) userData.em = await hashSha256(normalized);
   }
   const payload = {
     data: [
@@ -295,6 +303,7 @@ export default async function handler(req: Request) {
         }),
         sendMetaCapiPurchase({
           userId: userId || null,
+          userEmail: userEmail || null,
           transactionId: String(transactionId),
           value: valueNum,
           currency: currencyCode,

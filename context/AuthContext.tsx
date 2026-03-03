@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { trackEvent, maybeTrackPurchaseFromPending } from '../lib/analytics';
-import { metaLead, metaTrackCustom } from '../lib/metaPixel';
+import { metaLead, metaTrackCustom, setMetaUserData, clearMetaUserData } from '../lib/metaPixel';
 
 export interface Profile {
   id: string;
@@ -52,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     let profileData = data as Profile | null;
     if (profileData?.last_purchased_pack_id) maybeTrackPurchaseFromPending(profileData.last_purchased_pack_id, profileData.last_order_id ?? undefined);
+    if (profileData) setMetaUserData(profileData.email, uid);
     if (profileData && (profileData.username == null || profileData.username.trim() === '')) {
       const username = 'rüyacı_' + Math.random().toString(36).slice(2, 12);
       const { error: updateErr } = await supabase.from('profiles').update({ username, updated_at: new Date().toISOString() }).eq('id', uid);
@@ -78,6 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const newPackId = (row.last_purchased_pack_id as string | null) ?? null;
             const newOrderId = (row.last_order_id as string | null) ?? null;
             if (newPackId) maybeTrackPurchaseFromPending(newPackId, newOrderId ?? undefined);
+            const rowEmail = row.email as string | null;
+            if (rowEmail || user?.id) setMetaUserData(rowEmail ?? undefined, user?.id ?? undefined);
             setProfileState({
               id: String(row.id ?? ''),
               email: row.email as string | null,
@@ -184,6 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setProfileState(null);
+    clearMetaUserData();
   };
 
   return (

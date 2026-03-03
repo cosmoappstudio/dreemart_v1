@@ -74,7 +74,31 @@ Not: İlk PageView uygulama tarafından route değişiminde gönderilir; All Pag
 2. Sitede dolaş, event’leri tetikle
 3. Data Layer’da `metaPixel` event’lerini kontrol et
 
-## 7. Custom Event'ler Meta'da Görünmüyorsa
+## 7. Advanced Matching (Purchase Event Match Quality)
+
+Login sonrası uygulama `metaUserData` event'i gönderir. Purchase event'inde **Email** (~%100) ve **External ID** (~%7) eklenerek Event Match Quality artar.
+
+**GTM Tag:** Custom Event = `metaUserData` trigger ile:
+
+```html
+<script>
+(function() {
+  if (typeof fbq !== 'function') return;
+  var ud = {{metaUserData}} || {};
+  if (Object.keys(ud).length === 0) {
+    fbq('init', 'PIXEL_ID_BURAYA');
+  } else {
+    fbq('init', 'PIXEL_ID_BURAYA', ud);
+  }
+})();
+</script>
+```
+
+**Variable:** `metaUserData` – Data Layer Variable, `metaUserData` (metaUserData event'inin payload'ı).
+
+Init tag'den sonra fire etmeli (Tag Sequencing).
+
+## 8. Custom Event'ler Meta'da Görünmüyorsa
 
 - **Tag Sequencing:** Init tag, metaPixel event tag'den önce fire etmeli (metaPixel tag → Advanced Settings → Fire a tag before this tag fires → Init tag)
 - GTM Preview'da metaPixel tetiklendiğinde event tag fire oluyor mu kontrol et
