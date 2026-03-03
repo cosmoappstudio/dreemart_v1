@@ -140,7 +140,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : undefined;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      // Sadece gerçek OAuth callback'te login track et.
+      // SIGNED_IN, session restore veya token refresh'te de tetiklenebilir → her seferinde login göndermeyelim.
+      const isRealOAuthLogin =
+        event === 'SIGNED_IN' &&
+        session?.user &&
+        typeof window !== 'undefined' &&
+        (/#.*access_token=/.test(window.location.hash) || /[?&]code=/.test(window.location.search));
+      if (isRealOAuthLogin) {
         trackEvent('login', { method: 'Google' });
         metaLead();
         metaTrackCustom('login', { method: 'Google' });
