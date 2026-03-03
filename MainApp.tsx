@@ -118,6 +118,29 @@ export default function MainApp() {
     });
   }, []);
 
+  // Popup: Ödeme sonrası Lemon Squeezy redirect_url ile buraya gelir – parent'a bildirip popup'ı kapat
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.opener) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('purchase') !== 'success') return;
+    try {
+      window.opener.postMessage({ type: 'dreemart-purchase-complete' }, window.location.origin);
+      window.close();
+    } catch {
+      window.close();
+    }
+  }, []);
+
+  // Parent: Popup'tan purchase-complete mesajı alınca profili yenile
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type === 'dreemart-purchase-complete') refreshProfile();
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [refreshProfile]);
+
   useEffect(() => {
     if (!user?.id || !supabase) return;
     supabase.from('dreams').select('id, created_at, prompt, image_url, interpretation, artists(name)').eq('user_id', user.id).order('created_at', { ascending: false }).then(({ data }) => {
@@ -338,10 +361,11 @@ export default function MainApp() {
     // Lemon Squeezy: API ile checkout URL oluştur (UUID değiştiği için sabit link yerine)
     if (variantIdNum && user?.id) {
       try {
+        const redirectUrl = `${window.location.origin}/app?purchase=success`;
         const res = await fetch(getApiUrl('/api/lemon-squeezy-create-checkout'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: user.id, variant_id: variantIdNum }),
+          body: JSON.stringify({ user_id: user.id, variant_id: variantIdNum, redirect_url: redirectUrl }),
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data?.url) {

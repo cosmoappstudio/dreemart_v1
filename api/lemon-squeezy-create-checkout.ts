@@ -15,6 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const userId = (req.body as { user_id?: string })?.user_id;
   const variantIdRaw = (req.body as { variant_id?: string | number })?.variant_id;
+  const redirectUrl = (req.body as { redirect_url?: string })?.redirect_url;
   if (!userId || variantIdRaw == null) {
     return res.status(400).json({ error: 'user_id and variant_id required' });
   }
@@ -22,14 +23,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!Number.isFinite(variantId)) {
     return res.status(400).json({ error: 'Invalid variant_id' });
   }
+  // redirect_url: ödeme sonrası yönlendirilecek URL – varsayılan "Processing..." takılmasını önler
+  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.VITE_APP_URL || 'https://dreemart.app';
+  let finalRedirect = `${baseUrl}/app?purchase=success`;
+  if (redirectUrl?.trim()) {
+    const r = redirectUrl.trim();
+    if (r.startsWith('http')) finalRedirect = r;
+    else if (r.startsWith('/')) finalRedirect = `${baseUrl}${r}`;
+  }
+  const productOptions: Record<string, unknown> = { enabled_variants: [variantId], redirect_url: finalRedirect };
 
   const payload = {
     data: {
       type: 'checkouts',
       attributes: {
-        product_options: {
-          enabled_variants: [variantId],
-        },
+        product_options: productOptions,
         checkout_data: {
           custom: { user_id: userId },
         },
