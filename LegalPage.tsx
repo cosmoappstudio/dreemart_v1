@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { Moon, Loader2, ChevronDown } from 'lucide-react';
 import { LEGAL_LINK_LABELS } from './landingTranslations';
 import type { Language } from './types';
+import { buildUrlWithLang, getLangFromSearch } from './lib/languageUrl';
 
 const PATH_TO_KEY: Record<string, string> = {
   '/terms': 'terms',
@@ -20,9 +21,10 @@ const LANG_OPTIONS: { code: Language; flag: string; label: string }[] = [
 ];
 
 export default function LegalPage() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const navigate = useNavigate();
   const key = PATH_TO_KEY[pathname] || 'terms';
-  const [lang, setLang] = useState<Language>('tr');
+  const [lang, setLang] = useState<Language>(() => getLangFromSearch(search));
   const [langOpen, setLangOpen] = useState(false);
   const [data, setData] = useState<{ title: string; content: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,14 +49,19 @@ export default function LegalPage() {
       });
   }, [key, lang]);
 
+  useEffect(() => {
+    const urlLang = getLangFromSearch(search);
+    if (urlLang !== lang) setLang(urlLang);
+  }, [search]);
+
   const t = LEGAL_LINK_LABELS[lang];
-  const backUrl = '/app';
+  const backUrl = buildUrlWithLang('/app', search, lang);
 
   return (
     <div className="min-h-screen bg-[#0B0D17] text-gray-100 overflow-x-hidden">
       <header className="sticky top-0 z-20 flex items-center justify-between gap-2 px-3 sm:px-4 py-3 sm:py-4 bg-[#0B0D17]/90 backdrop-blur border-b border-white/10">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-          <Link to="/" className="flex items-center gap-2 min-w-0">
+          <Link to={buildUrlWithLang('/', search, lang)} className="flex items-center gap-2 min-w-0">
             <Moon className="w-6 h-6 text-white fill-current flex-shrink-0" />
             <span className="font-serif font-bold text-white truncate">Dreemart</span>
           </Link>
@@ -78,11 +85,15 @@ export default function LegalPage() {
               <ul className="absolute right-0 mt-1 py-1 rounded-xl bg-[#1a1c2e] border border-white/10 shadow-xl z-30 min-w-[140px]">
                 {LANG_OPTIONS.map((opt) => (
                   <li key={opt.code}>
-                    <button
-                      type="button"
-                      onClick={() => { setLang(opt.code); setLangOpen(false); }}
-                      className={`w-full flex items-center gap-2 py-2 px-4 text-sm ${lang === opt.code ? 'text-gold-400 bg-gold-500/10' : 'text-gray-300 hover:bg-white/10'}`}
-                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLang(opt.code);
+                          setLangOpen(false);
+                          navigate(buildUrlWithLang(pathname, search, opt.code), { replace: true });
+                        }}
+                        className={`w-full flex items-center gap-2 py-2 px-4 text-sm ${lang === opt.code ? 'text-gold-400 bg-gold-500/10' : 'text-gray-300 hover:bg-white/10'}`}
+                      >
                       {opt.flag} {opt.label}
                     </button>
                   </li>

@@ -110,11 +110,13 @@ export function trackPurchase(params: {
 const PENDING_PURCHASE_KEY = 'dreemart_pending_purchase';
 const PENDING_MAX_AGE_MS = 60 * 60 * 1000; // 1 saat
 
-/** Begin checkout çağrıldığında bekleyen satın alma bilgisini sakla (purchase event için) */
+/** Begin checkout çağrıldığında bekleyen satın alma bilgisini sakla (purchase event için).
+ * localStorage kullanıyoruz: Lemon Squeezy popup'ta açıldığında success URL aynı origin'de
+ * farklı sekmede yüklenir, sessionStorage paylaşılmaz; localStorage tüm sekmelerde ortaktır. */
 export function setPendingPurchase(params: { packId: string; value: number; itemName: string; country?: string }): void {
   if (typeof window === 'undefined') return;
   try {
-    sessionStorage.setItem(
+    localStorage.setItem(
       PENDING_PURCHASE_KEY,
       JSON.stringify({ ...params, ts: Date.now() })
     );
@@ -126,12 +128,12 @@ export function setPendingPurchase(params: { packId: string; value: number; item
 /** Profile last_purchased_pack_id güncellendiğinde çağrılır; eşleşen pending varsa purchase event gönderir. orderId LS order ID (CAPI/Pixel dedup için) */
 export function maybeTrackPurchaseFromPending(packId: string, orderId?: string): void {
   try {
-    const raw = sessionStorage.getItem(PENDING_PURCHASE_KEY);
+    const raw = localStorage.getItem(PENDING_PURCHASE_KEY);
     if (!raw) return;
     const data = JSON.parse(raw) as { packId: string; value: number; itemName: string; country?: string; ts: number };
     if (data.packId !== packId) return;
     if (Date.now() - data.ts > PENDING_MAX_AGE_MS) return;
-    sessionStorage.removeItem(PENDING_PURCHASE_KEY);
+    localStorage.removeItem(PENDING_PURCHASE_KEY);
     const item = { item_id: packId, item_name: data.itemName, price: data.value, country: data.country };
     const txId = orderId ?? `ls-${packId}-${data.ts}`;
     if (window.gtag) {
@@ -141,6 +143,6 @@ export function maybeTrackPurchaseFromPending(packId: string, orderId?: string):
       metaPurchase({ content_ids: [packId], content_type: 'product', value: data.value, currency: 'USD', order_id: txId, num_items: 1 });
     });
   } catch {
-    sessionStorage.removeItem(PENDING_PURCHASE_KEY);
+    localStorage.removeItem(PENDING_PURCHASE_KEY);
   }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Moon, Palette, MessageSquare, Award, ChevronDown, Sparkles,
   Zap, LayoutGrid, Lock, Gem, Gift, Home, BookOpen, Heart
@@ -10,6 +10,7 @@ import { supabase } from './lib/supabase';
 import { useAuth } from './context/AuthContext';
 import { trackEvent } from './lib/analytics';
 import { metaTrackCustom } from './lib/metaPixel';
+import { buildUrlWithLang, getLangFromSearch } from './lib/languageUrl';
 
 const LANG_OPTIONS: { code: Language; flag: string; label: string }[] = [
   { code: 'tr', flag: '🇹🇷', label: 'Türkçe' },
@@ -56,7 +57,9 @@ const FALLBACK_PACKS: PricingPack[] = [
 
 export default function LandingPage() {
   const { user } = useAuth();
-  const [lang, setLang] = useState<Language>('tr');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [lang, setLang] = useState<Language>(() => getLangFromSearch(location.search));
   const [langOpen, setLangOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
@@ -66,7 +69,6 @@ export default function LandingPage() {
   const [packs, setPacks] = useState<PricingPack[]>(FALLBACK_PACKS);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
-  const navigate = useNavigate();
   const howSectionRef = useRef<HTMLElement>(null);
   const t = LANDING[lang];
 
@@ -88,6 +90,19 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
+    const urlLang = getLangFromSearch(location.search);
+    if (urlLang !== lang) setLang(urlLang);
+  }, [location.search]);
+
+  // URL'de lang yoksa ekle (fbclid, utm vb. korunur) - sayfa açıldığında link güncel olsun
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (!params.has('lang')) {
+      navigate(buildUrlWithLang(location.pathname, location.search, lang), { replace: true });
+    }
+  }, [location.pathname, location.search, lang, navigate]);
+
+  useEffect(() => {
     const id = setInterval(() => setTestimonialIndex((i) => (i + 1) % 3), 5000);
     return () => clearInterval(id);
   }, []);
@@ -101,7 +116,7 @@ export default function LandingPage() {
   const handleDemoCreate = () => {
     trackEvent('demo_create_click', { artist: demoArtist });
     metaTrackCustom('demo_create_click', { artist: demoArtist });
-    navigate('/login');
+    navigate(buildUrlWithLang('/login', location.search, lang));
   };
 
   return (
@@ -113,7 +128,7 @@ export default function LandingPage() {
 
       {/* ========== HEADER ========== */}
       <header className="relative z-20 flex items-center justify-between gap-2 px-4 sm:px-6 py-4 sm:py-5 max-w-6xl mx-auto pt-safe mt-2 sm:mt-4">
-        <Link to="/" className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+        <Link to={buildUrlWithLang('/', location.search, lang)} className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           {logoUrl ? (
             <img src={logoUrl} alt="Dreemart" className="h-14 w-auto sm:h-16 md:h-20 object-contain flex-shrink-0" />
           ) : (
@@ -145,7 +160,13 @@ export default function LandingPage() {
                     <li key={opt.code}>
                       <button
                         type="button"
-                        onClick={() => { trackEvent('language_change', { from: lang, to: opt.code }); metaTrackCustom('language_change', { from: lang, to: opt.code }); setLang(opt.code); setLangOpen(false); }}
+                        onClick={() => {
+                          trackEvent('language_change', { from: lang, to: opt.code });
+                          metaTrackCustom('language_change', { from: lang, to: opt.code });
+                          setLang(opt.code);
+                          setLangOpen(false);
+                          navigate(buildUrlWithLang(location.pathname, location.search, opt.code), { replace: true });
+                        }}
                         className={`w-full flex items-center gap-2 py-2.5 px-4 text-sm font-medium ${lang === opt.code ? 'text-amber-400 bg-amber-500/10' : 'text-gray-300 hover:bg-white/10'}`}
                       >
                         {opt.flag} {opt.label}
@@ -157,11 +178,11 @@ export default function LandingPage() {
             )}
           </div>
           {user ? (
-            <button onClick={() => { trackEvent('cta_click', { placement: 'header', label: 'to_app' }); metaTrackCustom('cta_click', { placement: 'header', label: 'to_app' }); navigate('/app'); }} className="px-3 sm:px-4 py-2.5 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-200 font-medium text-xs sm:text-sm hover:bg-amber-500/30 min-h-[44px] touch-manipulation whitespace-nowrap">
+            <button onClick={() => { trackEvent('cta_click', { placement: 'header', label: 'to_app' }); metaTrackCustom('cta_click', { placement: 'header', label: 'to_app' }); navigate(buildUrlWithLang('/app', location.search, lang)); }} className="px-3 sm:px-4 py-2.5 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-200 font-medium text-xs sm:text-sm hover:bg-amber-500/30 min-h-[44px] touch-manipulation whitespace-nowrap">
               Uygulamaya Git
             </button>
           ) : (
-            <button onClick={() => { trackEvent('cta_click', { placement: 'header', label: 'login' }); metaTrackCustom('cta_click', { placement: 'header', label: 'login' }); navigate('/login'); }} className="px-3 sm:px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white font-medium text-xs sm:text-sm hover:bg-white/15 min-h-[44px] touch-manipulation whitespace-nowrap">
+            <button onClick={() => { trackEvent('cta_click', { placement: 'header', label: 'login' }); metaTrackCustom('cta_click', { placement: 'header', label: 'login' }); navigate(buildUrlWithLang('/login', location.search, lang)); }} className="px-3 sm:px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white font-medium text-xs sm:text-sm hover:bg-white/15 min-h-[44px] touch-manipulation whitespace-nowrap">
               {t.ctaLogin}
             </button>
           )}
@@ -177,7 +198,7 @@ export default function LandingPage() {
             </h1>
             <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-6 sm:mb-8 px-1">{t.heroSubtitle}</p>
             <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3">
-              <button onClick={() => { trackEvent('cta_click', { placement: 'hero', label: 'free_try' }); metaTrackCustom('cta_click', { placement: 'hero', label: 'free_try' }); navigate('/login'); }} className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold text-base sm:text-lg hover:from-purple-600 hover:to-indigo-700 shadow-lg transition-all min-h-[48px] touch-manipulation">
+              <button onClick={() => { trackEvent('cta_click', { placement: 'hero', label: 'free_try' }); metaTrackCustom('cta_click', { placement: 'hero', label: 'free_try' }); navigate(buildUrlWithLang('/login', location.search, lang)); }} className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold text-base sm:text-lg hover:from-purple-600 hover:to-indigo-700 shadow-lg transition-all min-h-[48px] touch-manipulation">
                 {t.ctaFree}
               </button>
               <button type="button" onClick={scrollToHow} className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl bg-white/10 border border-white/20 text-gray-200 font-bold text-base sm:text-lg hover:bg-white/15 transition-all min-h-[48px] touch-manipulation">
@@ -271,7 +292,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="text-center mt-6 sm:mt-8">
-            <button onClick={() => { trackEvent('cta_click', { placement: 'how', label: 'try' }); metaTrackCustom('cta_click', { placement: 'how', label: 'try' }); navigate('/login'); }} className="w-full sm:w-auto px-6 sm:px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold min-h-[48px] touch-manipulation">{t.ctaTry}</button>
+            <button onClick={() => { trackEvent('cta_click', { placement: 'how', label: 'try' }); metaTrackCustom('cta_click', { placement: 'how', label: 'try' }); navigate(buildUrlWithLang('/login', location.search, lang)); }} className="w-full sm:w-auto px-6 sm:px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold min-h-[48px] touch-manipulation">{t.ctaTry}</button>
           </div>
         </section>
 
@@ -351,7 +372,7 @@ export default function LandingPage() {
                           ⏱ 19.8 {t.demoOutputReady}
                         </span>
                         <button
-                          onClick={() => { trackEvent('cta_click', { placement: 'demo', label: 'download' }); metaTrackCustom('cta_click', { placement: 'demo', label: 'download' }); navigate('/login'); }}
+                          onClick={() => { trackEvent('cta_click', { placement: 'demo', label: 'download' }); metaTrackCustom('cta_click', { placement: 'demo', label: 'download' }); navigate(buildUrlWithLang('/login', location.search, lang)); }}
                           className="px-3 py-2 rounded-lg bg-white/20 text-white text-xs font-medium backdrop-blur-sm hover:bg-white/30 border border-white/20 touch-manipulation min-h-[36px]"
                         >
                           {t.demoDownload}
@@ -464,7 +485,7 @@ export default function LandingPage() {
                   <li className="flex items-center gap-2">✓ {t.packFeature6}</li>
                 </ul>
                 <button
-                  onClick={() => { trackEvent('pricing_pack_click', { pack_id: p.id, pack_name: p.name }); metaTrackCustom('pricing_pack_click', { pack_id: p.id, pack_name: p.name }); navigate('/login'); }}
+                  onClick={() => { trackEvent('pricing_pack_click', { pack_id: p.id, pack_name: p.name }); metaTrackCustom('pricing_pack_click', { pack_id: p.id, pack_name: p.name }); navigate(buildUrlWithLang('/login', location.search, lang)); }}
                   className={`mt-3 sm:mt-6 w-full py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] touch-manipulation ${
                     p.badge
                       ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700 shadow-lg'
@@ -500,7 +521,7 @@ export default function LandingPage() {
           <div className="text-center max-w-2xl mx-auto">
             <h2 className="text-xl sm:text-2xl md:text-4xl font-serif font-bold text-white mb-2 sm:mb-3 px-1">{t.finalCtaTitle}</h2>
             <p className="text-gray-300 mb-6 sm:mb-8 text-sm sm:text-base px-1">{t.finalCtaSubtitle}</p>
-            <button onClick={() => { trackEvent('cta_click', { placement: 'final', label: 'start' }); metaTrackCustom('cta_click', { placement: 'final', label: 'start' }); navigate('/login'); }} className="w-full sm:w-auto px-8 sm:px-12 py-3.5 sm:py-4 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold text-base sm:text-lg shadow-lg min-h-[48px] touch-manipulation">
+            <button onClick={() => { trackEvent('cta_click', { placement: 'final', label: 'start' }); metaTrackCustom('cta_click', { placement: 'final', label: 'start' }); navigate(buildUrlWithLang('/login', location.search, lang)); }} className="w-full sm:w-auto px-8 sm:px-12 py-3.5 sm:py-4 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold text-base sm:text-lg shadow-lg min-h-[48px] touch-manipulation">
               {t.finalCtaButton}
             </button>
             <div className="flex flex-wrap justify-center gap-3 sm:gap-6 mt-6 sm:mt-8 text-xs sm:text-sm text-gray-400">
@@ -531,8 +552,8 @@ export default function LandingPage() {
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">{t.footerProduct}</p>
                 <ul className="space-y-2 text-sm text-gray-400">
                   <li><a href="#how" className="hover:text-white">{t.footerHow}</a></li>
-                  <li><button type="button" onClick={() => { trackEvent('cta_click', { placement: 'footer', label: 'pricing' }); metaTrackCustom('cta_click', { placement: 'footer', label: 'pricing' }); navigate('/login'); }} className="hover:text-white text-left">{t.footerPricing}</button></li>
-                  <li><button type="button" onClick={() => { trackEvent('cta_click', { placement: 'footer', label: 'features' }); metaTrackCustom('cta_click', { placement: 'footer', label: 'features' }); navigate('/login'); }} className="hover:text-white text-left">{t.footerFeatures}</button></li>
+                  <li><button type="button" onClick={() => { trackEvent('cta_click', { placement: 'footer', label: 'pricing' }); metaTrackCustom('cta_click', { placement: 'footer', label: 'pricing' }); navigate(buildUrlWithLang('/login', location.search, lang)); }} className="hover:text-white text-left">{t.footerPricing}</button></li>
+                  <li><button type="button" onClick={() => { trackEvent('cta_click', { placement: 'footer', label: 'features' }); metaTrackCustom('cta_click', { placement: 'footer', label: 'features' }); navigate(buildUrlWithLang('/login', location.search, lang)); }} className="hover:text-white text-left">{t.footerFeatures}</button></li>
                   <li><span className="text-gray-500">{t.footerMobile}</span></li>
                 </ul>
               </div>
@@ -543,10 +564,10 @@ export default function LandingPage() {
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">{t.footerLegal}</p>
                 <ul className="space-y-2 text-sm text-gray-400">
-                  <li><Link to="/privacy" className="hover:text-white">{t.footerPrivacyLink}</Link></li>
-                  <li><Link to="/terms" className="hover:text-white">{t.footerTermsLink}</Link></li>
-                  <li><Link to="/cookie-policy" className="hover:text-white">{t.footerCookies}</Link></li>
-                  <li><Link to="/refund-policy" className="hover:text-white">{t.footerRefundLink}</Link></li>
+                  <li><Link to={buildUrlWithLang('/privacy', location.search, lang)} className="hover:text-white">{t.footerPrivacyLink}</Link></li>
+                  <li><Link to={buildUrlWithLang('/terms', location.search, lang)} className="hover:text-white">{t.footerTermsLink}</Link></li>
+                  <li><Link to={buildUrlWithLang('/cookie-policy', location.search, lang)} className="hover:text-white">{t.footerCookies}</Link></li>
+                  <li><Link to={buildUrlWithLang('/refund-policy', location.search, lang)} className="hover:text-white">{t.footerRefundLink}</Link></li>
                 </ul>
               </div>
               <div>

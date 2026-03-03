@@ -8,6 +8,7 @@ import { LANDING } from './landingTranslations';
 import type { Language } from './types';
 import { ChevronDown } from 'lucide-react';
 import { ADMIN_PATH } from './lib/adminPath';
+import { buildUrlWithLang, getLangFromSearch } from './lib/languageUrl';
 import MainApp from './MainApp';
 import AdminApp from './admin/AdminApp';
 import LandingPage from './LandingPage';
@@ -113,15 +114,10 @@ const LOGIN_GRID_FALLBACK: { image_url: string }[] = [
 function LoginPage() {
   const { signInWithGoogle, user, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [message, setMessage] = useState<string | null>(null);
   const [gridExamples, setGridExamples] = useState<{ image_url: string }[]>(LOGIN_GRID_FALLBACK);
-  const [lang, setLang] = useState<Language>(() => {
-    try {
-      const s = typeof localStorage !== 'undefined' ? localStorage.getItem('dreemart_lang') : null;
-      if (s === 'tr' || s === 'en' || s === 'es' || s === 'de') return s;
-    } catch {}
-    return 'tr';
-  });
+  const [lang, setLang] = useState<Language>(() => getLangFromSearch(location.search));
   const [langOpen, setLangOpen] = useState(false);
   const oauthError = (location.state as { oauthError?: string } | null)?.oauthError;
   const t = LANDING[lang];
@@ -164,12 +160,18 @@ function LoginPage() {
     }
   };
 
+  useEffect(() => {
+    const urlLang = getLangFromSearch(location.search);
+    if (urlLang !== lang) setLang(urlLang);
+  }, [location.search]);
+
   const setLangAndPersist = (l: Language) => {
     setLang(l);
     setLangOpen(false);
     try {
       localStorage.setItem('dreemart_lang', l);
     } catch {}
+    navigate(buildUrlWithLang(location.pathname, location.search, l), { replace: true });
   };
 
   if (loading) {
@@ -179,7 +181,7 @@ function LoginPage() {
       </div>
     );
   }
-  if (user) return <Navigate to="/app" replace />;
+  if (user) return <Navigate to={buildUrlWithLang('/app', location.search, lang)} replace />;
 
   return (
     <div className="min-h-screen bg-[#0B0D17] flex flex-col lg:flex-row overflow-hidden">

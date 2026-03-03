@@ -17,6 +17,22 @@ const USE_GTM = !!GTM_ID;
 
 let fbqInitialized = false;
 
+/** Meta reklamından gelen fbclid'i yakala ve _fbc cookie'sine yaz. Event Match Quality için kritik.
+ * Format: fb.1.{timestamp}.{fbclid} - Meta dokümanlarına uygun. */
+function captureFbclid(): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fbclid = params.get('fbclid');
+    if (fbclid && fbclid.length > 0) {
+      const fbc = `fb.1.${Date.now()}.${fbclid}`;
+      document.cookie = `_fbc=${encodeURIComponent(fbc)}; path=/; max-age=7776000; SameSite=Lax`;
+    }
+  } catch {
+    // ignore
+  }
+}
+
 function createFbq() {
   const queue: unknown[] = [];
   const n = function (this: unknown, ...args: unknown[]) {
@@ -37,6 +53,7 @@ function pushToDataLayer(payload: { event: string; metaEvent: string; metaParams
 
 export function initMetaTracking(): void {
   if (typeof window === 'undefined') return;
+  captureFbclid(); // Event Match Quality: fbclid → _fbc cookie (Click ID coverage)
   if (USE_GTM) {
     window.dataLayer = window.dataLayer || [];
     return;
@@ -125,5 +142,5 @@ export function metaTrackCustom(eventName: string, params?: Record<string, strin
     return;
   }
   if (!PIXEL_ID || !window.fbq) return;
-  window.fbq('trackCustom', eventName, params);
+  window.fbq('trackCustom', eventName, p); // params undefined olmasın diye p kullan
 }
