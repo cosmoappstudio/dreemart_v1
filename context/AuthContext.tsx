@@ -143,14 +143,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : undefined;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Sadece gerçek OAuth callback'te login track et.
-      // SIGNED_IN, session restore veya token refresh'te de tetiklenebilir → her seferinde login göndermeyelim.
+      // Sadece gerçek OAuth callback'te login track et (session restore / token refresh değil).
+      // URL'de access_token veya code yoksa bile, signInWithGoogle tıklandığında set ettiğimiz flag ile tespit ederiz.
+      const urlHasOAuthParams = typeof window !== 'undefined' && (/#.*access_token=/.test(window.location.hash) || /[?&]code=/.test(window.location.search));
+      const oauthStarted = typeof window !== 'undefined' && sessionStorage.getItem('dreemart_oauth_started') === '1';
       const isRealOAuthLogin =
         event === 'SIGNED_IN' &&
         session?.user &&
-        typeof window !== 'undefined' &&
-        (/#.*access_token=/.test(window.location.hash) || /[?&]code=/.test(window.location.search));
+        (urlHasOAuthParams || oauthStarted);
       if (isRealOAuthLogin) {
+        try {
+          sessionStorage.removeItem('dreemart_oauth_started');
+        } catch {}
         trackEvent('login', { method: 'Google' });
         metaLead();
         metaTrackCustom('login', { method: 'Google' });
@@ -174,6 +178,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async (redirectPath?: string) => {
     if (!supabase) return;
+    try {
+      sessionStorage.setItem('dreemart_oauth_started', '1');
+    } catch {}
     const path = redirectPath ?? '/app';
     const redirectTo = new URL(path, window.location.origin).href;
     await supabase.auth.signInWithOAuth({
