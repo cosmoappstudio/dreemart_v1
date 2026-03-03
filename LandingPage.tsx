@@ -179,7 +179,7 @@ export default function LandingPage() {
           </div>
           {user ? (
             <button onClick={() => { trackEvent('cta_click', { placement: 'header', label: 'to_app' }); metaTrackCustom('cta_click', { placement: 'header', label: 'to_app' }); navigate(buildUrlWithLang('/app', location.search, lang)); }} className="px-3 sm:px-4 py-2.5 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-200 font-medium text-xs sm:text-sm hover:bg-amber-500/30 min-h-[44px] touch-manipulation whitespace-nowrap">
-              Uygulamaya Git
+              {t.ctaToApp}
             </button>
           ) : (
             <button onClick={() => { trackEvent('cta_click', { placement: 'header', label: 'login' }); metaTrackCustom('cta_click', { placement: 'header', label: 'login' }); navigate(buildUrlWithLang('/login', location.search, lang)); }} className="px-3 sm:px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white font-medium text-xs sm:text-sm hover:bg-white/15 min-h-[44px] touch-manipulation whitespace-nowrap">
