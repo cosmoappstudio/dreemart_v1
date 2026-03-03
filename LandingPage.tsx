@@ -107,6 +107,16 @@ export default function LandingPage() {
     return () => clearInterval(id);
   }, []);
 
+  // Google Ads sitelink hash scroll: /#pricing, /#demo, /#faq, /#how
+  useEffect(() => {
+    const hash = location.hash?.replace(/^#/, '');
+    if (!hash || /access_token|refresh_token/.test(location.hash)) return;
+    const valid = ['how', 'demo', 'pricing', 'faq'];
+    if (!valid.includes(hash)) return;
+    const el = document.getElementById(hash);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [location.hash]);
+
   const scrollToHow = () => {
     trackEvent('cta_click', { placement: 'how', label: 'scroll_to_how' });
     metaTrackCustom('cta_click', { placement: 'how', label: 'scroll_to_how' });
@@ -269,7 +279,7 @@ export default function LandingPage() {
         </section>
 
         {/* ========== SECTION 3: HOW IT WORKS ========== */}
-        <section id="how" ref={howSectionRef} className="py-10 sm:py-16 scroll-mt-8 border-t border-white/5">
+        <section id="how" ref={howSectionRef} className="py-10 sm:py-16 scroll-mt-20 border-t border-white/5">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-white text-center mb-8 sm:mb-12 px-2">{t.howTitle}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             <div className="relative p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 text-center">
@@ -297,7 +307,7 @@ export default function LandingPage() {
         </section>
 
         {/* ========== SECTION 4: INTERACTIVE DEMO ========== */}
-        <section className="py-10 sm:py-16 border-t border-white/5">
+        <section id="demo" className="py-10 sm:py-16 scroll-mt-20 border-t border-white/5">
           <div className="relative max-w-5xl mx-auto">
             {/* Glow behind card */}
             <div className="absolute inset-0 -mx-2 sm:-mx-4 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-purple-500/15 via-amber-500/10 to-indigo-500/15 blur-2xl pointer-events-none" aria-hidden />
@@ -453,7 +463,7 @@ export default function LandingPage() {
         </section>
 
         {/* ========== SECTION 9: PRICING ========== (admin-editable packs) */}
-        <section className="py-10 sm:py-16 border-t border-white/5">
+        <section id="pricing" className="py-10 sm:py-16 scroll-mt-20 border-t border-white/5">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-white text-center mb-2 sm:mb-3 px-2">{t.pricingTitle}</h2>
           <p className="text-gray-400 text-center mb-6 sm:mb-10 text-sm sm:text-base px-2">{t.pricingDesc}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-row items-stretch justify-center gap-3 sm:gap-4 md:gap-5 max-w-5xl mx-auto">
@@ -501,7 +511,7 @@ export default function LandingPage() {
         </section>
 
         {/* ========== SECTION 10: FAQ ========== */}
-        <section className="py-10 sm:py-16 border-t border-white/5 max-w-2xl mx-auto px-1">
+        <section id="faq" className="py-10 sm:py-16 scroll-mt-20 border-t border-white/5 max-w-2xl mx-auto px-1">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-white text-center mb-6 sm:mb-10 px-2">{t.faqTitle}</h2>
           <div className="space-y-2 sm:space-y-3">
             {Array.from({ length: 10 }, (_, i) => i + 1).map((i) => (
