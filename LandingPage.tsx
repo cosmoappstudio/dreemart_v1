@@ -94,13 +94,14 @@ export default function LandingPage() {
     if (urlLang !== lang) setLang(urlLang);
   }, [location.search]);
 
-  // URL'de lang yoksa ekle (fbclid, utm vb. korunur) - sayfa açıldığında link güncel olsun
+  // URL'de lang yoksa ekle (fbclid, utm vb. korunur) - hash (#pricing vb.) korunur
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (!params.has('lang')) {
-      navigate(buildUrlWithLang(location.pathname, location.search, lang), { replace: true });
+      const target = buildUrlWithLang(location.pathname, location.search, lang) + (location.hash || '');
+      navigate(target, { replace: true });
     }
-  }, [location.pathname, location.search, lang, navigate]);
+  }, [location.pathname, location.search, location.hash, lang, navigate]);
 
   useEffect(() => {
     const id = setInterval(() => setTestimonialIndex((i) => (i + 1) % 3), 5000);
@@ -175,7 +176,8 @@ export default function LandingPage() {
                           metaTrackCustom('language_change', { from: lang, to: opt.code });
                           setLang(opt.code);
                           setLangOpen(false);
-                          navigate(buildUrlWithLang(location.pathname, location.search, opt.code), { replace: true });
+                          const target = buildUrlWithLang(location.pathname, location.search, opt.code) + (location.hash || '');
+                          navigate(target, { replace: true });
                         }}
                         className={`w-full flex items-center gap-2 py-2.5 px-4 text-sm font-medium ${lang === opt.code ? 'text-amber-400 bg-amber-500/10' : 'text-gray-300 hover:bg-white/10'}`}
                       >
